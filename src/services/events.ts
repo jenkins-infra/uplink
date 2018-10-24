@@ -107,7 +107,7 @@ export class EventsHooks {
           authorize(),
         ],
         remove: [
-          authorize(),
+          authorize({ allowInternal: true }),
         ],
       },
       after: {

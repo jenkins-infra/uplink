@@ -46,7 +46,7 @@ debug-db:
 	$(COMPOSE) run --rm db psql -h db -U postgres uplink_development
 
 generate-event:
-	curl -d '{"type":"stapler", "correlator" : "my-correlator-id", "payload" : {"timestamp" : "$(shell date)", "hi" : "there"}}' \
+	curl -d '{"type":"stapler", "correlator" : "86e3f00d-b12a-4391-bbf2-6f01c1606e17", "payload" : {"timestamp" : "$(shell date)", "hi" : "there"}}' \
 	    -H "Content-Type: application/json" \
 	    http://localhost:3030/events
 
