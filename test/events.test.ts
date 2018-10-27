@@ -90,6 +90,16 @@ describe('Events service tests', () => {
         },
       };
 
+      it('should match the transform that the Jenkins core code uses', () => {
+        const correlator = "00000000-0000-0000-0000-000000000000";
+        const hashedCorrelator = '90ecf3ce1cd5ba1e5ad3cde7ad08a941e884f2e4d9bd463361715abab8efedc5';
+        const eventType = 'test-data';
+        context.data.correlator = correlator;
+        context.data.type = eventType;
+
+        return expect(EventsHooks.transformCorrelator(context)).resolves.toHaveProperty('data.correlator', hashedCorrelator);
+      });
+
       it('should transform correlators that look like UUIDs', () => {
         const correlator = '86e3f00d-b12a-4391-bbf2-6f01c1606e17';
         context.data.correlator = correlator;
