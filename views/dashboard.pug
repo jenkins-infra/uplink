@@ -59,11 +59,15 @@ html(lang="en")
               strong
                 a(href='?$sort[id]=-1').text-light ▲
                 a(href='?$sort[id]=1').text-light ▼
+            th(scope='col').text-center Date &nbsp;
+              strong
+                a(href='?$sort[createdAt]=-1').text-light ▲
+                a(href='?$sort[createdAt]=1').text-light ▼
             th(scope='col').text-center Correlator &nbsp;
               strong
                 a(href='?$sort[correlator]=-1').text-light ▲
                 a(href='?$sort[correlator]=1').text-light ▼
-            th(scope='col').text-center Type
+            th(scope='col').text-center Type &nbsp;
               if types.length > 0
                 select(id='type-nav', name='types', onchange='navigateToType()')
                   each t in types
@@ -74,6 +78,8 @@ html(lang="en")
             tr
               td.text-center.
                 #{e.id}
+              td.text-center.
+                #{e.createdAt.toISOString()}
               td.text-center
                 a(href='?correlator=' + e.correlator) #{e.correlator}
               td.text-center
