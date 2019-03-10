@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'linux' }
+    agent { label 'node' }
 
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -12,27 +12,9 @@ pipeline {
     }
 
     stages { 
-        stage('Build & test') {
+        stage('Build') {
             steps {
-                sh 'make migrate check'
-            }
-        }
-
-        stage('Containers') {
-            steps {
-                sh 'make container'
-            }
-        }
-
-        stage('Publish container') {
-            when { expression { infra.isTrusted() } }
-
-            steps {
-                withCredentials([[$class: 'ZipFileBinding',
-                            credentialsId: 'jenkins-dockerhub',
-                                variable: 'DOCKER_CONFIG']]) {
-                    sh 'make publish'
-                }
+                sh 'npm install'
             }
         }
     }
