@@ -1,6 +1,6 @@
 import url from 'url';
 import request from 'request-promise';
-import { HooksObject } from '@feathersjs/feathers';
+import { HooksObject, HookContext } from '@feathersjs/feathers';
 
 import app from '../src/app';
 import { EventsHooks } from '../src/services/events'
@@ -82,12 +82,18 @@ describe('Events service tests', () => {
     });
 
     describe('transformCorrelator', () => {
-      const context = {
+      const context: HookContext<any> = {
         data: {
           correlator: null,
           type: 'jest',
           payload: {},
         },
+        app: null,
+        method: null,
+        params: null,
+        path: null,
+        service: null,
+        type: null,
       };
 
       it('should match the transform that the Jenkins core code uses', () => {
@@ -96,6 +102,7 @@ describe('Events service tests', () => {
         const eventType = 'test-data';
         context.data.correlator = correlator;
         context.data.type = eventType;
+
 
         return expect(EventsHooks.transformCorrelator(context)).resolves.toHaveProperty('data.correlator', hashedCorrelator);
       });

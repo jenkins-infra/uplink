@@ -2,7 +2,7 @@ import url from 'url';
 import request from 'request-promise';
 
 import app from '../src/app';
-import types from '../src/service/types';
+import types from '../src/services/types';
 
 // Offsetting a bit to ensure that we can watch and run at the same time
 const port = (app.get('port') || 3030) + 10;
