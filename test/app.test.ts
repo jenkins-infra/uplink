@@ -23,7 +23,7 @@ describe('Feathers application tests', () => {
   });
 
   it('starts and shows the index page', () => {
-    return request(getUrl()).then(body =>
+    return request(getUrl('')).then(body =>
       expect(body.indexOf('<html>')).not.toEqual(-1)
     );
   });

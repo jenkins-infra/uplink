@@ -12,9 +12,7 @@
     "target": "es2015",
     "sourceMap": true,
     "typeRoots" : [
-        "./node_modules/@types",
-        "./node_modules/@sentry/node",
-        "./node_modules/@sentry/types"
+        "./node_modules/@types"
     ]
   },
   "include": [
