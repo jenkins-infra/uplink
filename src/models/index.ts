@@ -14,6 +14,12 @@ const db : any = {};
 const sequelize = new Sequelize(config.url, {
   logging: !!process.env.DB_TRACING,
   dialect: 'postgres',
+  pool: {
+    max: 10,
+    min: 1,
+    acquire: 30000,
+    idle: 10000
+  },
 });
 
 fs
