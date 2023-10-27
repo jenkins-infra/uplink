@@ -22,7 +22,7 @@ pipeline {
         }
 
         stage('Containers') {
-            when { expression { not { infra.isInfra() } } }
+            when { expression { !infra.isInfra() } }
             steps {
                 sh 'make container'
             }
