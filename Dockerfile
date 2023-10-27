@@ -24,5 +24,5 @@ COPY .sequelizerc ${APP_DIR}/
 
 EXPOSE 3030
 
-# hadoline ignore=DL3025
+# hadolint ignore=DL3025
 CMD node ./node_modules/.bin/sequelize db:migrate || node ./build/
