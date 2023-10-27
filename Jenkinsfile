@@ -19,20 +19,16 @@ pipeline {
         }
 
         stage('Containers') {
+            when { expression { not { infra.isInfra() } } }
             steps {
                 sh 'make container'
             }
         }
 
         stage('Publish container') {
-            when { expression { infra.isTrusted() } }
-
+            when { expression { infra.isInfra() } }
             steps {
-                withCredentials([[$class: 'ZipFileBinding',
-                            credentialsId: 'jenkins-dockerhub',
-                                variable: 'DOCKER_CONFIG']]) {
-                    sh 'make publish'
-                }
+                buildDockerAndPublishImage('uplink')
             }
         }
     }
