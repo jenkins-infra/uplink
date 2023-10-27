@@ -1,7 +1,7 @@
 pipeline {
     agent { 
-        // 'docker' is the (legacy) label used on ci.jenkins.io for "Docker Linux AMD64" while 'linux-amd64-docker' is the label used on infra.ci.jenkins.io
-        label 'docker || linux-amd64-docker'
+        // 'linux' is the (legacy) label used on ci.jenkins.io for "Docker Linux AMD64" while 'linux-amd64-docker' is the label used on infra.ci.jenkins.io
+        label 'linux || linux-amd64-docker'
     }
 
     options {
