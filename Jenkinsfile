@@ -19,6 +19,11 @@ pipeline {
             steps {
                 sh 'make migrate check'
             }
+            post {
+                success {
+                    stash name: 'build', includes: 'build'
+                }
+            }
         }
 
         stage('Containers') {
@@ -31,7 +36,7 @@ pipeline {
         stage('Publish container') {
             when { expression { infra.isInfra() } }
             steps {
-                buildDockerAndPublishImage('uplink')
+                buildDockerAndPublishImage('uplink', [unstash: 'build'])
             }
         }
     }
