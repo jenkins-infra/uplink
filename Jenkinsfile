@@ -1,5 +1,8 @@
 pipeline {
-    agent { label 'linux' }
+    agent { 
+        // 'linux' is the (legacy) label used on ci.jenkins.io for "Docker Linux AMD64" while 'linux-amd64-docker' is the label used on infra.ci.jenkins.io
+        label 'linux || linux-amd64-docker'
+    }
 
     options {
         timeout(time: 1, unit: 'HOURS')
@@ -16,10 +19,15 @@ pipeline {
             steps {
                 sh 'make migrate check'
             }
+            post {
+                success {
+                    stash name: 'build', includes: 'build/**/*'
+                }
+            }
         }
 
         stage('Containers') {
-            when { expression { not { infra.isInfra() } } }
+            when { expression { !infra.isInfra() } }
             steps {
                 sh 'make container'
             }
@@ -28,7 +36,7 @@ pipeline {
         stage('Publish container') {
             when { expression { infra.isInfra() } }
             steps {
-                buildDockerAndPublishImage('uplink')
+                buildDockerAndPublishImage('uplink', [unstash: 'build'])
             }
         }
     }
