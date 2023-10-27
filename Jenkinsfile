@@ -19,12 +19,14 @@ pipeline {
         }
 
         stage('Containers') {
+            when { expression { not { infra.isInfra() } } }
             steps {
                 sh 'make container'
             }
         }
 
         stage('Publish container') {
+            when { expression { infra.isInfra() } }
             steps {
                 buildDockerAndPublishImage('uplink')
             }
