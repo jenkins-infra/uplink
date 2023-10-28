@@ -29,7 +29,7 @@ publish: ## Publish the Docker container to docker hub
 version:
 	npm version
 
-depends: package.json package-lock.json ## Install node dependencies
+depends: version package.json package-lock.json ## Install node dependencies
 	if [ ! -d node_modules ]; then npm ci; fi;
 
 build: depends ## Compile TypeScript
