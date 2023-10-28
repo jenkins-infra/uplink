@@ -1,4 +1,4 @@
-FROM node:9 as builder
+FROM node:10 as builder
 
 ARG APP_DIR=/srv/uplink
 WORKDIR ${APP_DIR}
@@ -8,7 +8,7 @@ COPY package*json ${APP_DIR}/
 RUN npm install
 
 # Doing a multi-stage build to reset some stuff for a smaller image
-FROM node:9-alpine
+FROM node:10-alpine
 
 ARG APP_DIR=/srv/uplink
 WORKDIR ${APP_DIR}

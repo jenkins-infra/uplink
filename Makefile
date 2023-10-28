@@ -27,7 +27,7 @@ publish: ## Publish the Docker container to docker hub
 	docker push $(IMAGE_NAME):latest
 
 depends: package.json package-lock.json ## Install node dependencies
-	if [ ! -d node_modules ]; then npm install; fi;
+	if [ ! -d node_modules ]; then npm ci; fi;
 
 build: depends ## Compile TypeScript
 	$(TSC)
