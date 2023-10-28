@@ -30,7 +30,7 @@ version:
 	npm version
 
 depends: version package.json package-lock.json ## Install node dependencies
-	if [ ! -d node_modules ]; then npm install; fi;
+	if [ ! -d node_modules ]; then npm ci; fi;
 
 build: depends ## Compile TypeScript
 	$(TSC)
