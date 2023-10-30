@@ -29,14 +29,7 @@ publish: ## Publish the Docker container to docker hub
 version:
 	npm version
 
-npmupdate:
-	current=$(pwd)
-	mkdir /tmp/npm
-	cd /tmp/npm
-	npm install --global npm@5.7.0
-	cd $(current)
-
-depends: npmupdate version package.json package-lock.json ## Install node dependencies
+depends: version package.json package-lock.json ## Install node dependencies
 	if [ ! -d node_modules ]; then npm ci; fi;
 
 build: depends ## Compile TypeScript
