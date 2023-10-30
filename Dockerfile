@@ -1,11 +1,14 @@
 FROM node:9 as builder
 
+RUN npm install --global npm@5.7.0 && \
+    npm version
+
 ARG APP_DIR=/srv/uplink
 WORKDIR ${APP_DIR}
 
 COPY package*json ${APP_DIR}/
 
-RUN npm install
+RUN npm ci
 
 # Doing a multi-stage build to reset some stuff for a smaller image
 FROM node:9-alpine
