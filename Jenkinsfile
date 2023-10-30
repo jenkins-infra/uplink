@@ -36,7 +36,7 @@ pipeline {
         stage('Publish container') {
             when { expression { infra.isInfra() } }
             steps {
-                buildDockerAndPublishImage('uplink', [unstash: 'build'])
+                buildDockerAndPublishImage('uplink', [unstash: 'build', targetplatforms: 'linux/amd64,linux/arm64'])
             }
         }
     }
