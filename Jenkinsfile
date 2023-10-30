@@ -34,7 +34,12 @@ pipeline {
         }
 
         stage('Publish container') {
-            when { expression { infra.isInfra() } }
+            when {
+                allOf {
+                    expression { infra.isInfra() }
+                    buildingTag()
+                }
+            }
             steps {
                 buildDockerAndPublishImage('uplink', [unstash: 'build'])
             }
