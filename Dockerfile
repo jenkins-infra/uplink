@@ -1,7 +1,6 @@
 FROM node:20 as builder
 
-RUN npm install --global npm@5.7.0 && \
-    npm version
+RUN npm version
 
 ARG APP_DIR=/srv/uplink
 WORKDIR ${APP_DIR}
