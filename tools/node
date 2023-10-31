@@ -27,5 +27,5 @@ exec docker run --rm ${TTY_ARGS} --net host  \
     -e DB_CONNECTION_STRING="${DB_CONNECTION_STRING}" \
     -e LOG_LEVEL=$LOG_LEVEL \
     $(printenv | grep -i \^node | awk '{ print "-e", $1 }') \
-    node:10 \
+    node:20 \
     ${COMMAND}
