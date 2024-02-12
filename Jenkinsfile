@@ -26,17 +26,9 @@ pipeline {
             }
         }
 
-        stage('Containers') {
-            when { expression { !infra.isInfra() } }
+        stage('Container') {
             steps {
-                sh 'make container'
-            }
-        }
-
-        stage('Publish container') {
-            when { expression { infra.isInfra() } }
-            steps {
-                buildDockerAndPublishImage('uplink', [unstash: 'build', targetplatforms: 'linux/amd64,linux/arm64'])
+                buildDockerAndPublishImage('uplink', [unstash: 'build', targetplatforms: 'linux/amd64,linux/arm64', disablePublication: !infra.isInfra()])
             }
         }
     }
