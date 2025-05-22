@@ -12,6 +12,12 @@ const db : any = {};
 const sequelize = new Sequelize(config.url, {
   logging: !!process.env.DB_TRACING,
   dialect: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: env === 'production' ? true : false
+    }
+  },
   pool: {
     max: 10,
     min: 1,

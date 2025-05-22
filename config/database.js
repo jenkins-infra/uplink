@@ -21,5 +21,11 @@ else {
 module.exports =  {};
 module.exports[nodeEnv] = {
   'url' : process.env.DB_CONNECTION_STRING || connectorConfig['postgres'],
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: nodeEnv === 'production' ? true : false
+    }
+  },
   'dialect' : 'postgresql',
 };

@@ -1,7 +1,14 @@
 version: '3'
 services:
   db:
-    image: postgres:10-alpine
+    image: postgres:17
+    volumes:
+      - ./docker/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: >
+      -c ssl=on
+      -c ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+      -c ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+      -c hba_file=/etc/postgresql/pg_hba.conf
     environment:
       - 'POSTGRES_PASSWORD=jenkinsuplink'
       # Used for psql non-interactive scripting
@@ -9,7 +16,7 @@ services:
       - 'POSTGRES_DB=uplink_development'
 
   node:
-    image: node:10
+    image: node:22
     command: '/usr/local/bin/node $PWD/node_modules/.bin/nodemon build'
     working_dir: $PWD
     environment:
