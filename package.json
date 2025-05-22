@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node ./src",
+    "build": "tsc",
     "test": "jest"
   },
   "repository": {
@@ -57,8 +58,8 @@
     "helmet": "^3.13.0",
     "jsonstream": "^1.0.3",
     "passport-github": "^1.1.0",
-    "pg": "^7.4.3",
-    "pg-query-stream": "^1.1.2",
+    "pg": "^8.16.0",
+    "pg-query-stream": "^4.10.0",
     "pug": "^2.0.4",
     "sequelize": "^4.38.0",
     "serve-favicon": "^2.5.0",
