@@ -1,25 +1,13 @@
-# Automates creation of Release Drafts using Release Drafter
-# Note: additional setup is required, see https://github.com/jenkinsci/.github/blob/master/.github/release-drafter.adoc
-
-name: Release Drafter (Changelog)
-
+name: Release Drafter
 on:
   push:
-    branches:
-      - master
-  # Allow to be run manually
   workflow_dispatch:
-  # Prepare the new "next release" once a release is created
   release:
-
-# Only allow 1 release-drafter build at a time to avoid creating multiple "next" releases
-concurrency: "release-drafter"
-
 jobs:
   update_release_draft:
     runs-on: ubuntu-latest
     steps:
-      # Drafts your next Release notes as Pull Requests are merged into the default branch
-      - uses: release-drafter/release-drafter@v5.25.0
+      - uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v5
         env:
+          # This token is generated automatically by default in GitHub Actions: no need to create it manually
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
