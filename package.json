@@ -28,15 +28,15 @@
     "@types/feathersjs__configuration": "^1.0.3",
     "@types/feathersjs__express": "^1.1.6",
     "@types/feathersjs__feathers": "^3.1.5",
-    "@types/jest": "^23.3.14",
+    "@types/jest": "^29.5.14",
     "@types/winston": "^2.4.4",
-    "jest": "^23.6.0",
+    "jest": "^29.7.0",
     "nodemon": "^1.19.1",
     "request": "^2.88.0",
     "request-promise": "^4.2.4",
     "sequelize-cli": "^5.5.1",
-    "ts-jest": "^23.10.5",
-    "typescript": "^3.5.2"
+    "ts-jest": "^29.3.4",
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "@feathersjs/authentication": "^2.1.9",

@@ -4,7 +4,7 @@ import request from 'request-promise';
 import app from '../src/app';
 
 // Offsetting a bit to ensure that we can watch and run at the same time
-const port = (app.get('port') || 3030) + 10;
+const port = (app.get('port') || 3030) + 20;
 const getUrl = pathname => url.format({
   hostname: app.get('host') || 'localhost',
   protocol: 'http',
@@ -13,13 +13,14 @@ const getUrl = pathname => url.format({
 });
 
 describe('Feathers application tests', () => {
+  let server;
   beforeEach(function(done) {
-    this.server = app.listen(port);
-    this.server.once('listening', () => done());
+    server = app.listen(port);
+    server.once('listening', () => done());
   });
 
   afterEach(function(done) {
-    this.server.close(done);
+    server.close(done);
   });
 
   it('starts and shows the index page', () => {
