@@ -1,4 +1,4 @@
-FROM node:22 as builder
+FROM node:22 AS builder
 
 RUN npm version
 
@@ -23,8 +23,8 @@ COPY config ${APP_DIR}/config
 COPY public ${APP_DIR}/public
 COPY views ${APP_DIR}/views
 COPY .sequelizerc ${APP_DIR}/
+COPY ./entrypoint.sh /
 
 EXPOSE 3030
 
-# hadolint ignore=DL3025
-CMD node ./node_modules/.bin/sequelize db:migrate || node ./build/
+ENTRYPOINT [ "/entrypoint.sh" ]
