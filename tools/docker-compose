@@ -3,7 +3,13 @@
 # This file is a simple shim script to ensure that wherever we are building, we
 # have a docker-compose that we can use
 
-VERSION="1.20.0"
+# Check if docker compose is available
+if docker compose version >/dev/null 2>&1; then
+    exec docker compose "${@}"
+fi
+
+# Fall back to downloading standalone docker-compose if needed
+VERSION="2.24.0"
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/../
 BUILD_DIR="${REPO_ROOT}/build"
 LOCAL_COMPOSE=${REPO_ROOT}/build/docker-compose
@@ -14,8 +20,14 @@ if [ ! -f "${LOCAL_COMPOSE}" ]; then
     echo ">> No local docker-compose, downloading ${VERSION}"
     OS=$(uname -s)
     ARCH=$(uname -m)
+
+    # Map ARM architectures to the correct binary names
+    if [ "${ARCH}" = "arm64" ]; then
+        ARCH="aarch64"
+    fi
+
     curl -SL \
-        https://github.com/docker/compose/releases/download/${VERSION}/docker-compose-${OS}-${ARCH} \
+        https://github.com/docker/compose/releases/download/v${VERSION}/docker-compose-${OS}-${ARCH} \
         -o ${LOCAL_COMPOSE}
     chmod +x ${LOCAL_COMPOSE}
 fi;
