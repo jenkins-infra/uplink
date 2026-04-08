@@ -72,6 +72,41 @@ describe('Events service tests', () => {
           });
         });
       });
+
+      it('should reject attempts to override protected fields', (done) => {
+        const maliciousId = 999999;
+        const maliciousDate = '2020-01-01T00:00:00.000Z';
+
+        request.post(getUrl('/events'), {
+          json: true,
+          resolveWithFullResponse: true,
+          body: {
+            type: 'jest-malicious',
+            payload: {
+              test: 'data',
+            },
+            correlator: '0xbadactor',
+            // Attacker trying to override protected fields
+            id: maliciousId,
+            createdAt: maliciousDate,
+            updatedAt: maliciousDate,
+          },
+        }).then((response) => {
+          expect(response.statusCode).toEqual(201);
+
+          // Verify the protected fields were NOT set to attacker's values
+          expect(response.body.id).not.toEqual(maliciousId);
+          expect(response.body.createdAt).not.toEqual(maliciousDate);
+          expect(response.body.updatedAt).not.toEqual(maliciousDate);
+
+          // Verify the allowed fields were set correctly
+          expect(response.body.type).toEqual('jest-malicious');
+          expect(response.body.correlator).toEqual('0xbadactor');
+          expect(response.body.payload).toEqual({ test: 'data' });
+
+          done();
+        });
+      });
     });
   });
 
@@ -83,6 +118,60 @@ describe('Events service tests', () => {
     })
 
     describe('denormalizeType()', () => {
+    });
+
+    describe('filterFields', () => {
+      it('should only allow whitelisted fields', () => {
+        const context: HookContext<any> = {
+          data: {
+            type: 'jest-test',
+            correlator: 'test-correlator',
+            payload: { foo: 'bar' },
+            id: 999999,
+            createdAt: '2020-01-01T00:00:00.000Z',
+            updatedAt: '2020-01-01T00:00:00.000Z',
+            maliciousField: 'should-be-removed',
+          },
+          app: null,
+          method: null,
+          params: null,
+          path: null,
+          service: null,
+          type: null,
+        };
+        return EventsHooks.filterFields(context).then((result) => {
+          const ctx = result as HookContext<any>;
+          expect(ctx.data).toHaveProperty('type', 'jest-test');
+          expect(ctx.data).toHaveProperty('correlator', 'test-correlator');
+          expect(ctx.data).toHaveProperty('payload', { foo: 'bar' });
+          expect(ctx.data).not.toHaveProperty('id');
+          expect(ctx.data).not.toHaveProperty('createdAt');
+          expect(ctx.data).not.toHaveProperty('updatedAt');
+          expect(ctx.data).not.toHaveProperty('maliciousField');
+        });
+      });
+
+      it('should handle missing optional fields', () => {
+        const context: HookContext<any> = {
+          data: {
+            type: 'jest-test',
+            payload: { foo: 'bar' },
+          },
+          app: null,
+          method: null,
+          params: null,
+          path: null,
+          service: null,
+          type: null,
+        };
+
+        return EventsHooks.filterFields(context).then((result) => {
+          const ctx = result as HookContext<any>;
+          expect(ctx.data).toHaveProperty('type', 'jest-test');
+          expect(ctx.data).toHaveProperty('payload', { foo: 'bar' });
+          expect(ctx.data).not.toHaveProperty('correlator');
+        });
+      });
     });
 
     describe('transformCorrelator', () => {

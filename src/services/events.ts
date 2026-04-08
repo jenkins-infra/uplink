@@ -59,6 +59,27 @@ export class EventsHooks {
   }
 
   /**
+   * This feathers hook function prevents overriding protected fields like id, createdAt
+   * and updatedAt by only allowing whitelisted fields to be set during event creation.
+   *
+   * @param {HookContext}
+   * @return {Promise | HookContext}
+   */
+  static filterFields(context : HookContext) : Promise<void | HookContext<any>> {
+    const allowedFields = ['type', 'correlator', 'payload'];
+    const filtered = {};
+
+    for (const field of allowedFields) {
+      if (context.data.hasOwnProperty(field)) {
+        filtered[field] = context.data[field];
+      }
+    }
+
+    context.data = filtered;
+    return Promise.resolve(context);
+  }
+
+  /**
    * getHooks() simply returns a HooksObject for passing into Feathers
    *
    * It exists to make this all a bit more simple to test, nothing more
@@ -96,6 +117,7 @@ export class EventsHooks {
           /*
           * The create route is unauthenticated so clients can POST events
           */
+          this.filterFields,
           this.transformCorrelator,
         ],
         update: [
