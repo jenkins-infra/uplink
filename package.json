@@ -36,7 +36,7 @@
     "request-promise": "^4.2.4",
     "sequelize-cli": "^5.5.1",
     "ts-jest": "^29.3.4",
-    "typescript": "^5.8.3"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@feathersjs/authentication": "^2.1.9",
