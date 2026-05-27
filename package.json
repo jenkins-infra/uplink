@@ -42,7 +42,7 @@
     "@feathersjs/authentication": "^2.1.9",
     "@feathersjs/authentication-jwt": "^2.0.3",
     "@feathersjs/authentication-oauth2": "^1.2.2",
-    "@feathersjs/configuration": "^2.0.2",
+    "@feathersjs/configuration": "^5.0.44",
     "@feathersjs/errors": "^3.3.2",
     "@feathersjs/express": "^1.2.5",
     "@feathersjs/feathers": "^3.2.1",
