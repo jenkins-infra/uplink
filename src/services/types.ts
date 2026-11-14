@@ -2,15 +2,14 @@
  * This service produces a list of types in the system
  */
 
-import { Params, HooksObject } from '@feathersjs/feathers';
-import service from 'feathers-sequelize';
+import { SequelizeService } from 'feathers-sequelize';
 
 import authorize from '../hooks/authorize';
 import applyGrant from '../hooks/apply-grant';
 import db from '../models';
 import Type from '../models/type';
 
-const typesHooks : HooksObject = {
+const typesHooks = {
   before: {
     all: [
       authorize({ allowInternal: true, }),
@@ -23,12 +22,10 @@ const typesHooks : HooksObject = {
 
 export default (app) => {
   const Model : any = Type(db.sequelize, db.sequelize.Sequelize);
-  const typesService = service({ Model: Model });
+  const typesService = new SequelizeService({ Model: Model });
 
-  delete typesService.update;
-  delete typesService.remove;
-  delete typesService.patch;
-
-  app.use('/types', typesService);
+  // Only expose read/create: /types is denormalized from /events and should
+  // not be directly updated, patched or removed by clients
+  app.use('/types', typesService, { methods: ['find', 'get', 'create'] });
   app.service('types').hooks(typesHooks);
 }

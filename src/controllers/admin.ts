@@ -1,13 +1,11 @@
-import authentication from '@feathersjs/authentication';
+import { authenticate } from '@feathersjs/express';
 import { NotAuthenticated } from '@feathersjs/errors';
-import cookieParser from 'cookie-parser';
 
 export default (app) => {
   app.get('/admin',
-    cookieParser(),
-    authentication.express.authenticate('jwt'),
+    authenticate('jwt'),
     async (req, res, next) => {
-      const user = (req as any).user;
+      const user = req.feathers.user;
       const name : string = user.github.profile.username;
 
       app.service('grants').find({

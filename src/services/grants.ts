@@ -1,16 +1,15 @@
-import authentication from '@feathersjs/authentication';
-import { HooksObject } from '@feathersjs/feathers';
-import service from 'feathers-sequelize';
+import { authenticate } from '@feathersjs/authentication';
+import { SequelizeService } from 'feathers-sequelize';
 import { DataTypes } from 'sequelize';
 
 import logger from '../logger';
 import db from '../models';
 import Grant from '../models/grant';
 
-export const grantHooks : HooksObject = {
+export const grantHooks = {
   before: {
     all: [
-      authentication.hooks.authenticate(['jwt']),
+      authenticate('jwt'),
     ],
   },
   after: {
@@ -21,6 +20,6 @@ export const grantHooks : HooksObject = {
 
 export default (app) => {
   const Model : any = Grant(db.sequelize, db.sequelize.Sequelize);
-  app.use('/grants', service({ Model }));
+  app.use('/grants', new SequelizeService({ Model }));
   app.service('grants').hooks(grantHooks);
 }

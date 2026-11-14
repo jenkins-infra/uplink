@@ -1,7 +1,5 @@
 import url from 'url';
 import request from 'request-promise';
-import { HooksObject, HookContext } from '@feathersjs/feathers';
-
 import app from '../src/app';
 import { EventsHooks } from '../src/services/events'
 
@@ -17,9 +15,11 @@ const getUrl = pathname => url.format({
 describe('Events service tests', () => {
   describe('Acceptance tests for /events', () => {
     let server
-    beforeEach((done) => {
-      server = app.listen(port);
-      server.once('listening', () => done());
+    // @feathersjs/express v5's app.listen() is async, resolving once the
+    // server is set up and listening (it used to return the server
+    // synchronously)
+    beforeEach(async () => {
+      server = await app.listen(port);
     });
     afterEach(done => {
       server.close(done)
@@ -40,7 +40,9 @@ describe('Events service tests', () => {
 
     describe('POST to /events', () => {
       beforeEach(async () => {
-        const removalArgs = { query: { $limit: 1000 } };
+        // feathers-sequelize v7 requires bulk removes to be explicitly
+        // opted into via `params.adapter.multi`
+        const removalArgs = { query: { $limit: 1000 }, adapter: { multi: true } };
         await app.service('events')
           .remove(null, removalArgs);
         await app.service('types').remove(null, removalArgs);
@@ -122,7 +124,7 @@ describe('Events service tests', () => {
 
     describe('filterFields', () => {
       it('should only allow whitelisted fields', () => {
-        const context: HookContext<any> = {
+        const context: any = {
           data: {
             type: 'jest-test',
             correlator: 'test-correlator',
@@ -140,7 +142,7 @@ describe('Events service tests', () => {
           type: null,
         };
         return EventsHooks.filterFields(context).then((result) => {
-          const ctx = result as HookContext<any>;
+          const ctx = result as any;
           expect(ctx.data).toHaveProperty('type', 'jest-test');
           expect(ctx.data).toHaveProperty('correlator', 'test-correlator');
           expect(ctx.data).toHaveProperty('payload', { foo: 'bar' });
@@ -152,7 +154,7 @@ describe('Events service tests', () => {
       });
 
       it('should handle missing optional fields', () => {
-        const context: HookContext<any> = {
+        const context: any = {
           data: {
             type: 'jest-test',
             payload: { foo: 'bar' },
@@ -166,7 +168,7 @@ describe('Events service tests', () => {
         };
 
         return EventsHooks.filterFields(context).then((result) => {
-          const ctx = result as HookContext<any>;
+          const ctx = result as any;
           expect(ctx.data).toHaveProperty('type', 'jest-test');
           expect(ctx.data).toHaveProperty('payload', { foo: 'bar' });
           expect(ctx.data).not.toHaveProperty('correlator');
@@ -175,7 +177,7 @@ describe('Events service tests', () => {
     });
 
     describe('transformCorrelator', () => {
-      const context: HookContext<any> = {
+      const context: any = {
         data: {
           correlator: null,
           type: 'jest',

@@ -1,4 +1,3 @@
-import { SKIP } from '@feathersjs/feathers';
 import { Forbidden } from '@feathersjs/errors';
 
 import authorize from '../../src/hooks/authorize';
@@ -6,14 +5,11 @@ import authorize from '../../src/hooks/authorize';
 describe('The `authorize` hook', () => {
   let context = null;
   let mockServices = {};
+  const mockAuthService = {
+    authenticate: () => Promise.resolve({}),
+  };
   const mockApp = {
-    authenticate: () => {
-      return () => { return Promise.resolve({}); };
-    },
-    passport: {
-      _strategy: () => { return ['jwt'] },
-      options: () => { },
-    },
+    defaultAuthentication: () => mockAuthService,
     service: (name) => { return mockServices; },
   };
 
@@ -23,6 +19,10 @@ describe('The `authorize` hook', () => {
       app: mockApp,
       params: {
         query: {},
+        // A truthy value so the `authenticate` hook calls into our mocked
+        // authentication service instead of treating this as an
+        // unauthenticated external call
+        authentication: {},
       },
       data: {
       },
@@ -34,9 +34,10 @@ describe('The `authorize` hook', () => {
       return expect(authorize()(context)).rejects.toThrow(Forbidden);
     });
 
-    it('should SKIP when a `testing_access_token` is provided', () => {
+    it('should skip authorization when a `testing_access_token` is provided', async () => {
       context.params.query.testing_access_token = true;
-      return expect(authorize()(context)).resolves.toEqual(SKIP);
+      const result = await authorize()(context);
+      expect(result.params.skipGrants).toEqual(true);
     });
   });
 
@@ -47,9 +48,9 @@ describe('The `authorize` hook', () => {
         .rejects.toThrow(Forbidden);
     });
 
-    it('should SKIP for internal API calls', () => {
-      return expect(authorize({ allowInternal: true })(context))
-        .resolves.toEqual(SKIP);
+    it('should skip authorization for internal API calls', async () => {
+      const result = await authorize({ allowInternal: true })(context);
+      expect(result.params.skipGrants).toEqual(true);
     });
   });
 });
