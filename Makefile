@@ -1,13 +1,7 @@
-# Root Makefile to make the building and testing of this project easier
-# regardless of *nix based platform
-PATH:=$(PWD)/tools:$(PATH)
-TSC=$(PWD)/node_modules/typescript/bin/tsc
-JEST=$(PWD)/node_modules/jest/bin/jest.js
-SEQUELIZE=$(PWD)/node_modules/sequelize-cli/lib/sequelize
-COMPOSE:=./tools/docker-compose
-IMAGE_NAME=jenkinsciinfra/uplink
-IMAGE_TAG:=$(shell git rev-parse HEAD)
+NODE:=docker-compose run --rm -e NODE_ENV=test --entrypoint=node dev-uplink
 
+JEST=node_modules/jest/bin/jest.js
+SEQUELIZE=node_modules/sequelize-cli/lib/sequelize
 JEST_ARGS=--runInBand --bail --forceExit --detectOpenHandles
 
 # Cute hack thanks to:
@@ -15,74 +9,52 @@ JEST_ARGS=--runInBand --bail --forceExit --detectOpenHandles
 help: ## Display this help text
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
+all: build check
 
-all: build check container
+build: ## Build all assets (Compile TypeScript, Docker image, etc.)
+	docker-compose build
 
-container: Dockerfile depends ## Build the Docker container
-	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
-	docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(IMAGE_NAME):latest
+check: build ## Run all tests
+	$(NODE) $(JEST) $(JEST_ARGS)
 
-publish: ## Publish the Docker container to docker hub
-	docker push ${IMAGE_NAME}:$(IMAGE_TAG)
-	docker push $(IMAGE_NAME):latest
-
-version:
-	npm version
-
-depends: version package.json package-lock.json ## Install node dependencies
-	if [ ! -d node_modules ]; then npm ci; fi;
-
-build: depends ## Compile TypeScript
-	$(TSC)
-
-check: build depends migrate ## Run all tests
-	# Running with docker-compose since our tests require a database to be
-	# present
-	$(COMPOSE) run --rm \
-		-e NODE_ENV=test \
-		node \
-		/usr/local/bin/node $(JEST) $(JEST_ARGS)
-
-clean: ## Remove node_modules and clean up
-	$(COMPOSE) down || true
-	rm -rf node_modules
+clean: ## Clean up
+	docker-compose down -v --remove-orphans
 
 debug-jest: ## Launch jest with debugger on port 9229
-	node --inspect-brk=0.0.0.0:9229 $(JEST)
+	$(NODE) --inspect-brk=0.0.0.0:9229 $(JEST)
 
 debug-db:
-	$(COMPOSE) run --rm db psql -h db -U postgres uplink_development
+	docker-compose run --rm --entrypoint=bash db -c 'psql --host=db --username=$$POSTGRES_USER --dbname=$$POSTGRES_DB'
 
 generate-event: ## Send a sample event to a service running on localhost:3030
 	curl -d '{"type":"stapler", "correlator" : "86e3f00d-b12a-4391-bbf2-6f01c1606e17", "payload" : {"timestamp" : "$(shell date)", "hi" : "there"}}' \
-	    -H "Content-Type: application/json" \
-	    http://localhost:3030/events
+		-H "Content-Type: application/json" \
+		http://localhost:3030/events
 
-migrate: depends ## Run migrations against the local development database
-	$(COMPOSE) up -d db
-	@echo ">> waiting a moment to make sure the database comes online.."
-	@sleep 3
-	$(COMPOSE) run --rm node \
-		/usr/local/bin/node $(SEQUELIZE) db:migrate && \
-	$(COMPOSE) run --rm node \
-		/usr/local/bin/node $(SEQUELIZE) db:seed:all
+migrate: ## Run migrations against the local development database
+	$(NODE) $(SEQUELIZE) db:migrate
+	$(NODE) $(SEQUELIZE) db:seed:all
 
+# TODO: Reimplement with https://docs.docker.com/compose/how-tos/file-watch/
 watch: migrate ## Run the tests in "watch" mode
-	# Running with docker-compose since our tests require a database to be
-	# present
-	$(COMPOSE) run --rm \
-		-e NODE_ENV=test \
-		node \
-		/usr/local/bin/node $(JEST) $(JEST_ARGS) --watch --coverage=false
+	$(NODE) $(JEST) $(JEST_ARGS) --watch --coverage=false
 
+# TODO: Reimplement with https://docs.docker.com/compose/how-tos/file-watch/
 watch-compile: ## Run the TypeScript compiler in "watch' mode
-	$(TSC) -w
+	$(NODE) node_modules/typescript/bin/tsc -w
 
-run: build ## Run the uplink service first
-	@echo ">> Make sure you run migrations first!"
-	@sleep 1
-	$(COMPOSE) up
+run: ## Run the uplink service first
+	docker-compose up --force-recreate --build --detach --wait dev-uplink
+	docker-compose logs -f dev-uplink
 
-.PHONY: all depends build clean check help run watch
+shell: ## Spawn an interactive shell in the development containerized environment
+	docker-compose exec -ti dev-uplink bash
+
+run-prod: migrate ## Executer with the production setup
+	docker-compose up --force-recreate --build --detach --wait uplink
+	make generate-event
+	docker-compose logs -f uplink
+
+.PHONY: all build clean check help run watch watch-compile run-prod shell
 
 # vim: set et

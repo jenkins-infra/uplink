@@ -3,14 +3,18 @@
 module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.bulkInsert('grants', [
-        {
-          name: 'rtyler',
-          type: '*',
-        },
-        {
-          name: 'daniel-beck',
-          type: '*',
-        },
+      {
+        name: 'dduportal',
+        type: '*',
+      },
+      {
+        name: 'daniel-beck',
+        type: '*',
+      },
+      {
+        name: 'lemeurherve',
+        type: '*',
+      },
     ]);
   },
 

@@ -5,8 +5,8 @@
   "postgres": "postgres://postgres:jenkinsuplink@db:5432/uplink_development",
   "authentication": {
     "secret": "a poorly formed development secret",
-    "session" : true,
-    "cookie" : {
+    "session": true,
+    "cookie": {
       "secure": false,
       "enabled": true,
       "name": "uplink-jwt"
