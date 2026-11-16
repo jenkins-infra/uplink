@@ -5,16 +5,24 @@
   "postgres": "postgres://postgres:jenkinsuplink@db:5432/uplink_development",
   "authentication": {
     "secret": "a poorly formed development secret",
-    "session" : true,
-    "cookie" : {
+    "entity": "user",
+    "service": "users",
+    "session": true,
+    "cookie": {
       "secure": false,
       "enabled": true,
       "name": "uplink-jwt"
+    },
+    "authStrategies": [
+      "jwt",
+      "github"
+    ],
+    "oauth": {
+      "defaults": {
+        "origin": "http://localhost:3030"
+      },
+      "github": {}
     }
-  },
-  "github": {
-    "clientID": "72bd7848c64951dded52",
-    "clientSecret": "60a8dc07b6391bff756d4eab3b84a520ee87becc"
   },
   "paginate": {
     "default": 10,

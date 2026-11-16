@@ -3,8 +3,7 @@
  * containing entries matching a specific type
  */
 
-import authentication from '@feathersjs/authentication';
-import cookieParser from 'cookie-parser';
+import { authenticate } from '@feathersjs/express';
 import db from '../models';
 
 import QueryStream from 'pg-query-stream';
@@ -12,8 +11,7 @@ import JSONStream from 'jsonstream'
 
 export default (app) => {
   app.post('/export',
-    cookieParser(),
-    authentication.express.authenticate('jwt'),
+    authenticate('jwt'),
     (req, res, next) => {
       db.sequelize.connectionManager.getConnection().then((pgConn) => {
         const query = new QueryStream('SELECT * FROM events WHERE type = $1 AND "createdAt" > $2 AND "createdAt" <= $3', [

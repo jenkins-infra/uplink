@@ -5,6 +5,10 @@ import logger from '../logger';
  */
 export default () => {
   return async context => {
+    if (context.params.skipGrants) {
+      return context;
+    }
+
     const grantedTypes = context.data.grants.filter(g => g != '*');
 
     if (grantedTypes) {

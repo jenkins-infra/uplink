@@ -1,6 +1,5 @@
-import authentication from '@feathersjs/authentication';
+import { authenticate } from '@feathersjs/authentication';
 import { Forbidden } from '@feathersjs/errors';
-import { SKIP } from '@feathersjs/feathers';
 
 import logger from '../logger';
 
@@ -12,25 +11,25 @@ export default (options : AuthorizeOptions = {}) => {
   return async context => {
 
     /*
-     * Allow internal API calls to skip the entire authorization process
+     * Allow internal API calls to skip the entire authorization process.
+     * `skipGrants` tells the paired `applyGrant` hook not to run, since no
+     * grants were looked up in this path.
      */
     if ((options.allowInternal) &&
         (!context.params.provider)) {
-      return SKIP;
+      context.params.skipGrants = true;
+      return context;
     }
 
     if ((process.env.NODE_ENV == 'test') &&
         (context.params.query.testing_access_token)) {
       // Remove the property to make sure it's not used in the DB query
       delete context.params.query.testing_access_token;
-      return SKIP;
+      context.params.skipGrants = true;
+      return context;
     }
 
-    context = await authentication.hooks.authenticate(['jwt'])(context);
-
-    if (context == SKIP) {
-      return SKIP;
-    }
+    context = await authenticate('jwt')(context);
 
     if (!context.params.user) {
       throw new Forbidden('No GitHub information, sorry');

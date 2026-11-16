@@ -3,12 +3,11 @@ import logger from './logger';
 import app from './app';
 
 const port : Number = app.get('port');
-const server : any = app.listen(port);
 
 process.on('unhandledRejection', (reason, p) =>
   logger.error('Unhandled Rejection at: Promise ', p, reason)
 );
 
-server.on('listening', () =>
+app.listen(port).then(() =>
   logger.info('Feathers application started on http://%s:%d', app.get('host'), port)
 );

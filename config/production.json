@@ -4,7 +4,6 @@
   "public": "../public/",
   "authentication": {
     "secret": "a poorly formed production secret",
-    "session" : true,
     "cookie" : {
       "secure": false,
       "enabled": true,

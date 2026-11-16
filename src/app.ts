@@ -19,17 +19,14 @@ import * as Sentry from '@sentry/node';
 /*
  * Feathers specific imports for setting up the application
  */
-import feathers from '@feathersjs/feathers';
+import { feathers } from '@feathersjs/feathers';
 import configuration from '@feathersjs/configuration';
-import authentication from '@feathersjs/authentication';
-import jwt from '@feathersjs/authentication-jwt';
-import oauth2 from '@feathersjs/authentication-oauth2';
-import { Strategy } from 'passport-github';
-import express from '@feathersjs/express';
+import express, { json, urlencoded, static as serveStatic, rest, notFound, errorHandler } from '@feathersjs/express';
 import socketio from '@feathersjs/socketio';
 /**/
 
 
+import authentication from './authentication';
 import middleware from './middleware';
 import services from './services';
 import { appHooks } from './app.hooks';
@@ -67,22 +64,30 @@ app.configure(settings);
 app.use(helmet());
 app.use(cors());
 app.use(compress());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(favicon(path.join(app.get('public'), 'favicon.ico')));
+app.use(json());
+app.use(urlencoded({ extended: true }));
+/*
+ * `config/*.json`'s `public` setting ("../public/") is a path relative to
+ * this file's directory (`src/` in development, `build/` once compiled),
+ * not to the process's current working directory. @feathersjs/configuration
+ * v2 used to resolve relative-looking config values like this one
+ * automatically; v5 no longer does, so it's resolved explicitly here.
+ */
+const publicPath = path.resolve(__dirname, app.get('public'));
+app.use(favicon(path.join(publicPath, 'favicon.ico')));
 // Host the public folder
-app.use('/', express.static(app.get('public')));
-
-// Set up Plugins and providers
-app.configure(express.rest());
-app.configure(socketio());
+app.use('/', serveStatic(publicPath));
 
 /*
  * Enabling the cookie parser on all requests to make sure we can use the JWT
- * authentication wherever we damn well please
+ * authentication wherever we damn well please. This must run before the REST
+ * transport below so that the `uplink-jwt` cookie is available to it.
  */
-app.get('*', cookieParser());
-app.post('*', cookieParser());
+app.use(cookieParser());
+
+// Set up Plugins and providers
+app.configure(rest());
+app.configure(socketio());
 
 /*
  * Ensure that POST calls which have _method set to DELETE get passed through
@@ -96,24 +101,16 @@ app.post('*', (req, res, next) => {
 });
 
 /*
- * Allow overriding the JWT secret in the environment, a la Kubernetes
+ * Allow overriding the JWT secret and GitHub OAuth app credentials in the
+ * environment, a la Kubernetes
  */
-app.get('authentication').secret = process.env.JWT_SECRET || app.get('authentication').secret;
-app.configure(authentication(app.get('authentication')));
+const authConfig = app.get('authentication');
+authConfig.secret = process.env.JWT_SECRET || authConfig.secret;
 
-app.configure(jwt());
-const githubSettings = app.get('github');
+authConfig.oauth.github.key = process.env.CLIENT_ID;
+authConfig.oauth.github.secret = process.env.CLIENT_SECRET;
 
-if (process.env.NODE_ENV == 'production') {
-  githubSettings.clientID = process.env.CLIENT_ID || githubSettings.clientID;
-  githubSettings.clientSecret = process.env.CLIENT_SECRET || githubSettings.clientSecret;
-}
-app.configure(oauth2(Object.assign(githubSettings, {
-  name: 'github',
-  Strategy: Strategy,
-  successRedirect: '/dashboard',
-  scope: [],
-})));
+app.configure(authentication);
 
 app.set('view engine', 'pug');
 
@@ -121,7 +118,12 @@ Dashboard(app);
 Export(app);
 Admin(app);
 
-app.get('/logout',
+/*
+ * @feathersjs/express's v5 typings only declare the single-argument,
+ * settings-getter overload of `app.get()`, not Express's route-handler
+ * overload, even though the underlying method is still plain Express.
+ */
+(app as any).get('/logout',
   cookieParser(),
   (req, res, next) => {
     res.clearCookie(app.get('authentication').cookie.name);
@@ -139,8 +141,8 @@ app.configure(channels);
 // The error handler must be before any other error middleware
 app.use(Sentry.Handlers.errorHandler() as any);
 // Configure a middleware for 404s and the error handler
-app.use(express.notFound());
-app.use(express.errorHandler({ logger }));
+app.use(notFound());
+app.use(errorHandler({ logger }));
 
 app.hooks(appHooks);
 

@@ -15,9 +15,11 @@ const getUrl = pathname => url.format({
 
 describe('Acceptance tests for /types', () => {
   let server
-  beforeEach((done) => {
-    server = app.listen(port);
-    server.once('listening', () => done());
+  // @feathersjs/express v5's app.listen() is async, resolving once the
+  // server is set up and listening (it used to return the server
+  // synchronously)
+  beforeEach(async () => {
+    server = await app.listen(port);
   });
   afterEach(done => {
     server.close(done)

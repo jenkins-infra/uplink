@@ -4,8 +4,8 @@
  */
 
 import { createHash } from 'crypto';
-import { Application, HookContext, HooksObject } from '@feathersjs/feathers';
-import service from 'feathers-sequelize';
+import { Application, HookContext } from '@feathersjs/feathers';
+import { SequelizeService } from 'feathers-sequelize';
 
 import authorize from '../hooks/authorize';
 import applyGrant from '../hooks/apply-grant';
@@ -86,7 +86,7 @@ export class EventsHooks {
    *
    * @return {HooksObject}
    */
-  static getHooks() : HooksObject {
+  static getHooks() {
     return {
       before: {
         all: [
@@ -143,7 +143,7 @@ export class EventsHooks {
 
 export default (app : Application) => {
   const Model : any = Event(db.sequelize, db.sequelize.Sequelize);
-  app.use('/events', service({
+  app.use('/events', new SequelizeService({
     Model: Model,
   }));
   app.service('events').hooks(EventsHooks.getHooks());

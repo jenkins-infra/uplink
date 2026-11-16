@@ -3,20 +3,18 @@
  * together
  */
 
-import authentication from '@feathersjs/authentication';
-import cookieParser from 'cookie-parser';
+import { authenticate } from '@feathersjs/express';
 
 export default (app) => {
   app.get('/dashboard',
-    cookieParser(),
-    authentication.express.authenticate('jwt'),
+    authenticate('jwt'),
     async (req, res, next) => {
       const query = Object.assign({
         $sort: {
           id: -1,
         }
       }, req.query);
-      const user = (req as any).user;
+      const user = req.feathers.user;
       const name : string = user.github.profile.username;
       const grants : Array<string> = await app.service('grants').find({ query: { name: name }});
       const types : Array<Object> = await app.service('types').find();
