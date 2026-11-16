@@ -1,4 +1,4 @@
-FROM node:22 AS builder
+FROM node:24 AS builder
 
 RUN npm version
 
@@ -10,7 +10,7 @@ COPY package*json ${APP_DIR}/
 RUN npm ci
 
 # Doing a multi-stage build to reset some stuff for a smaller image
-FROM node:22-alpine
+FROM node:24-alpine
 
 ARG APP_DIR=/srv/uplink
 WORKDIR ${APP_DIR}
