@@ -104,10 +104,9 @@ app.configure(authentication(app.get('authentication')));
 app.configure(jwt());
 const githubSettings = app.get('github');
 
-if (process.env.NODE_ENV == 'production') {
-  githubSettings.clientID = process.env.CLIENT_ID || githubSettings.clientID;
-  githubSettings.clientSecret = process.env.CLIENT_SECRET || githubSettings.clientSecret;
-}
+githubSettings.clientID = process.env.CLIENT_ID || githubSettings.clientID;
+githubSettings.clientSecret = process.env.CLIENT_SECRET || githubSettings.clientSecret;
+
 app.configure(oauth2(Object.assign(githubSettings, {
   name: 'github',
   Strategy: Strategy,
