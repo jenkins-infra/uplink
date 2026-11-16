@@ -107,10 +107,9 @@ app.post('*', (req, res, next) => {
 const authConfig = app.get('authentication');
 authConfig.secret = process.env.JWT_SECRET || authConfig.secret;
 
-if (process.env.NODE_ENV == 'production') {
-  authConfig.oauth.github.clientID = process.env.CLIENT_ID || authConfig.oauth.github.clientID;
-  authConfig.oauth.github.clientSecret = process.env.CLIENT_SECRET || authConfig.oauth.github.clientSecret;
-}
+authConfig.oauth.github.key = process.env.CLIENT_ID;
+authConfig.oauth.github.secret = process.env.CLIENT_SECRET;
+
 app.configure(authentication);
 
 app.set('view engine', 'pug');

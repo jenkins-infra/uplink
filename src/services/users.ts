@@ -29,7 +29,7 @@ export const usersHooks = {
 };
 
 export default (app) => {
-  const Model : any = User(db.sequelize, db.sequelize.Sequelize);
+  const Model: any = User(db.sequelize, db.sequelize.Sequelize);
   app.use('/users', new SequelizeService({ Model }));
   app.service('users').hooks(usersHooks);
 }

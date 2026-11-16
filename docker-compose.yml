@@ -13,20 +13,26 @@ services:
       # Used for psql non-interactive scripting
       - 'PGPASSWORD=jenkinsuplink'
       - 'POSTGRES_DB=uplink_development'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "uplink_development"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
-  node:
-    image: node:22
-    command: '/usr/local/bin/node $PWD/node_modules/.bin/nodemon build'
-    working_dir: $PWD
+  uplink:
+    build: .
+    env_file:
+      # .gitignored: you have to set it up yourself
+      - path: ./.secrets.env
+        required: false
     environment:
-      - 'PATH=$PWD/node_modules/.bin:$PATH'
-      - 'NODE_ENV=$NODE_ENV'
-      - 'DB_TRACING=true'
-      - 'DEBUG=$DEBUG'
-      - 'SENTRY_DSN=$SENTRY_DSN'
-    volumes:
-      - $PWD:$PWD
+      - DB_TRACING=true
     ports:
-      - '3030:3030'
+      - 3030:3030
+    volumes:
+      - ./seeders:/srv/uplink/seeders:ro
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+        restart: true # Restart uplink if the DB is restarted (new configuration)

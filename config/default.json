@@ -7,18 +7,21 @@
     "secret": "a poorly formed development secret",
     "entity": "user",
     "service": "users",
-    "authStrategies": ["jwt", "github"],
-    "cookie" : {
+    "session": true,
+    "cookie": {
       "secure": false,
       "enabled": true,
       "name": "uplink-jwt"
     },
+    "authStrategies": [
+      "jwt",
+      "github"
+    ],
     "oauth": {
-      "redirect": "/dashboard",
-      "github": {
-        "clientID": "72bd7848c64951dded52",
-        "clientSecret": "60a8dc07b6391bff756d4eab3b84a520ee87becc"
-      }
+      "defaults": {
+        "origin": "http://localhost:3030"
+      },
+      "github": {}
     }
   },
   "paginate": {

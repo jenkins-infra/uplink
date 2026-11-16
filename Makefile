@@ -3,7 +3,7 @@
 PATH:=$(PWD)/tools:$(PATH)
 TSC=$(PWD)/node_modules/typescript/bin/tsc
 JEST=$(PWD)/node_modules/jest/bin/jest.js
-SEQUELIZE=$(PWD)/node_modules/sequelize-cli/lib/sequelize
+SEQUELIZE=node_modules/sequelize-cli/lib/sequelize
 COMPOSE:=./tools/docker-compose
 IMAGE_NAME=jenkinsciinfra/uplink
 IMAGE_TAG:=$(shell git rev-parse HEAD)
@@ -58,14 +58,14 @@ generate-event: ## Send a sample event to a service running on localhost:3030
 	    -H "Content-Type: application/json" \
 	    http://localhost:3030/events
 
-migrate: depends ## Run migrations against the local development database
+migrate: #depends ## Run migrations against the local development database
 	$(COMPOSE) up -d db
-	@echo ">> waiting a moment to make sure the database comes online.."
-	@sleep 3
-	$(COMPOSE) run --rm node \
-		/usr/local/bin/node $(SEQUELIZE) db:migrate && \
-	$(COMPOSE) run --rm node \
-		/usr/local/bin/node $(SEQUELIZE) db:seed:all
+	$(COMPOSE) run --rm  \
+		--entrypoint=/usr/local/bin/node uplink \
+		$(SEQUELIZE) db:migrate && \
+	$(COMPOSE) run --rm  \
+		--entrypoint=/usr/local/bin/node uplink \
+		$(SEQUELIZE) db:seed:all
 
 watch: migrate ## Run the tests in "watch" mode
 	# Running with docker-compose since our tests require a database to be
@@ -78,10 +78,8 @@ watch: migrate ## Run the tests in "watch" mode
 watch-compile: ## Run the TypeScript compiler in "watch' mode
 	$(TSC) -w
 
-run: build ## Run the uplink service first
-	@echo ">> Make sure you run migrations first!"
-	@sleep 1
-	$(COMPOSE) up
+run: # build ## Run the uplink service first
+	$(COMPOSE) up --force-recreate --build uplink
 
 .PHONY: all depends build clean check help run watch
 
