@@ -9,8 +9,17 @@ import service from 'feathers-sequelize';
 
 import authorize from '../hooks/authorize';
 import applyGrant from '../hooks/apply-grant';
+import disallowExternal from '../hooks/disallow-external';
+import sanitizeQuery from '../hooks/sanitize-query';
 import db from '../models';
 import Event from '../models/event';
+
+/*
+ * The columns that may be used for filtering and sorting events. Notably
+ * excludes `payload`, as nested queries on JSON columns become JSON path
+ * expressions in Sequelize.
+ */
+const QUERYABLE_COLUMNS = ['id', 'type', 'correlator', 'createdAt', 'updatedAt'];
 
 export class EventsHooks {
   /**
@@ -93,6 +102,7 @@ export class EventsHooks {
         ],
         find: [
           authorize(),
+          sanitizeQuery(QUERYABLE_COLUMNS),
           applyGrant(),
           /*
           * Pagination for feathers-sequelize relies on Model.findAndCountAll()
@@ -111,6 +121,7 @@ export class EventsHooks {
         ],
         get: [
           authorize(),
+          sanitizeQuery(QUERYABLE_COLUMNS),
           applyGrant(),
         ],
         create: [
@@ -120,15 +131,18 @@ export class EventsHooks {
           this.filterFields,
           this.transformCorrelator,
         ],
+        /*
+         * Events are append-only telemetry: nobody needs to modify or delete
+         * them through the API. `remove` is still used internally by tests.
+         */
         update: [
-          authorize(),
+          disallowExternal(),
         ],
         patch: [
-          authorize(),
+          disallowExternal(),
         ],
         remove: [
-          // Used internally for tests
-          authorize({ allowInternal: true, }),
+          disallowExternal(),
         ],
       },
       after: {

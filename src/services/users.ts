@@ -17,7 +17,7 @@ export const usersHooks : HooksObject = {
     all: [
       authentication.hooks.authenticate(['jwt']),
       (context) => {
-        if (context.params.provider == 'rest') {
+        if (context.params.provider) {
           throw new NotAuthenticated('This route is not allowed to be publicly accessed');
         }
       },

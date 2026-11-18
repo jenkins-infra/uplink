@@ -14,7 +14,7 @@ all: build check
 build: ## Build all assets (Compile TypeScript, Docker image, etc.)
 	docker-compose build
 
-check: build ## Run all tests
+check: build migrate ## Run all tests
 	$(NODE) $(JEST) $(JEST_ARGS)
 
 clean: ## Clean up

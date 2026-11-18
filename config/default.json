@@ -8,6 +8,8 @@
     "session": true,
     "cookie": {
       "secure": false,
+      "httpOnly": true,
+      "sameSite": "lax",
       "enabled": true,
       "name": "uplink-jwt"
     }

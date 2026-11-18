@@ -1,5 +1,5 @@
 import authentication from '@feathersjs/authentication';
-import { NotAuthenticated } from '@feathersjs/errors';
+import { Forbidden, NotAuthenticated } from '@feathersjs/errors';
 import cookieParser from 'cookie-parser';
 
 export default (app) => {
@@ -8,7 +8,10 @@ export default (app) => {
     authentication.express.authenticate('jwt'),
     async (req, res, next) => {
       const user = (req as any).user;
-      const name : string = user.github.profile.username;
+      const name : string = user?.github?.profile?.username;
+      if (!name) {
+        return next(new Forbidden('No GitHub information, sorry'));
+      }
 
       app.service('grants').find({
         query: {

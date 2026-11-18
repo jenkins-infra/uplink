@@ -1,6 +1,7 @@
 
 import logger from './logger';
 import path from 'path';
+import { URL } from 'url';
 
 /*
  * Express-relateed imports that we need because this is running primarily over
@@ -10,7 +11,6 @@ import cookieParser from 'cookie-parser';
 import favicon from 'serve-favicon';
 import compress from 'compression';
 import helmet from 'helmet';
-import cors from 'cors';
 
 import * as Sentry from '@sentry/node';
 /**/
@@ -22,18 +22,17 @@ import * as Sentry from '@sentry/node';
 import feathers from '@feathersjs/feathers';
 import configuration from '@feathersjs/configuration';
 import authentication from '@feathersjs/authentication';
+import { Forbidden, NotAuthenticated } from '@feathersjs/errors';
 import jwt from '@feathersjs/authentication-jwt';
 import oauth2 from '@feathersjs/authentication-oauth2';
 import { Strategy } from 'passport-github';
 import express from '@feathersjs/express';
-import socketio from '@feathersjs/socketio';
 /**/
 
 
 import middleware from './middleware';
 import services from './services';
 import { appHooks } from './app.hooks';
-import channels from './channels';
 
 import Admin from './controllers/admin';
 import Dashboard from './controllers/dashboard';
@@ -63,9 +62,79 @@ if (process.env.SENTRY_DSN) {
 
 // Load app configuration
 app.configure(settings);
-// Enable security, CORS, compression, favicon and body parsing
+// Enable security, compression, favicon and body parsing
 app.use(helmet());
-app.use(cors());
+/*
+ * The only inline code in the UI is the <script> block and the onchange
+ * handler in views/dashboard.pug, the <style> block in public/index.html, and
+ * the <style> block in the HTML error pages of @feathersjs/errors.
+ * If any of those change, their hashes below need to be updated, e.g.:
+ *   printf '%s' 'navigateToType()' | openssl dgst -sha256 -binary | base64
+ * (for the blocks, hash the exact text between the opening and closing tags of
+ * the rendered page; browsers report the expected hash in the console when a
+ * CSP violation occurs).
+ */
+app.use(helmet.contentSecurityPolicy({
+  browserSniff: false,
+  directives: {
+    defaultSrc: ["'none'"],
+    scriptSrc: [
+      "'unsafe-hashes'",
+      // views/dashboard.pug <script> block
+      "'sha256-u3ra5HoIYc6P8wJ2lPIuBjgPx/xgo/pHroYhN+nljzQ='",
+      // views/dashboard.pug onchange='navigateToType()'
+      "'sha256-lZMDCYT2BxPOvzTyOkucGevIheGU1JvOsZua4AZCA+k='",
+    ],
+    styleSrc: [
+      'https://stackpath.bootstrapcdn.com',
+      // public/index.html <style> block
+      "'sha256-XWrUJwBrG68A7uDUSBXnTUd0sUtC8ttBT46YkKQh+Rc='",
+      // <style> block of the HTML error pages in @feathersjs/errors
+      "'sha256-urzFO9l9c2/6L/L55mbHyyId9UmAPnL5eRDLC4XV9hU='",
+    ],
+    imgSrc: ["'self'", 'data:'],
+    formAction: ["'self'"],
+    frameAncestors: ["'none'"],
+    baseUri: ["'none'"],
+  },
+}));
+/*
+ * No cross-origin browser client exists: Jenkins submits events server-side,
+ * and the UI is same-origin. So there's no CORS support, and state-changing
+ * requests sent by a browser on behalf of another site or origin are rejected
+ * (CSRF defense in addition to the SameSite cookie, which does not protect
+ * against other origins on the same site). Non-browser clients send neither
+ * header and are unaffected.
+ */
+app.use((req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  const fetchSite = req.get('Sec-Fetch-Site');
+  if (fetchSite) {
+    if ((fetchSite === 'same-origin') || (fetchSite === 'none')) {
+      return next();
+    }
+    return next(new Forbidden('Cross-origin requests are not allowed'));
+  }
+
+  // Fallback for browsers not sending Fetch Metadata request headers
+  const origin = req.get('Origin');
+  if (origin) {
+    let originHost = null;
+    try {
+      originHost = new URL(origin).host;
+    } catch (err) {
+      // 'null' or otherwise unparseable
+    }
+    if (originHost !== req.get('Host')) {
+      return next(new Forbidden('Cross-origin requests are not allowed'));
+    }
+  }
+
+  return next();
+});
 app.use(compress());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -75,7 +144,6 @@ app.use('/', express.static(app.get('public')));
 
 // Set up Plugins and providers
 app.configure(express.rest());
-app.configure(socketio());
 
 /*
  * Enabling the cookie parser on all requests to make sure we can use the JWT
@@ -102,6 +170,33 @@ app.get('authentication').secret = process.env.JWT_SECRET || app.get('authentica
 app.configure(authentication(app.get('authentication')));
 
 app.configure(jwt());
+
+/*
+ * POST /authentication with no credentials issues a JWT with sub:"anonymous".
+ * No legitimate caller in this application uses anonymous tokens — telemetry
+ * submissions go directly to /events (unauthenticated), and dashboard/admin
+ * sessions are established via the GitHub OAuth flow. Reject credential-free
+ * authentication requests at the source.
+ */
+app.service('authentication').hooks({
+  before: {
+    create: [
+      (context) => {
+        /*
+         * Tokens are only ever issued by the GitHub OAuth2 callback, whose
+         * Express handler calls authentication.create() internally (no
+         * transport provider) with the authenticated user already resolved
+         * server-side. Nothing calls this through REST: the service would sign
+         * whatever payload it's given without verifying any credential.
+         */
+        if (context.params.provider) {
+          throw new NotAuthenticated('Authentication credentials are required');
+        }
+      },
+    ],
+  },
+});
+
 const githubSettings = app.get('github');
 
 githubSettings.clientID = process.env.CLIENT_ID || githubSettings.clientID;
@@ -132,8 +227,6 @@ app.get('/logout',
 app.configure(middleware);
 // Set up our services (see `services/index.js`)
 app.configure(services);
-// Set up event channels (see channels.js)
-app.configure(channels);
 
 // The error handler must be before any other error middleware
 app.use(Sentry.Handlers.errorHandler() as any);
