@@ -5,6 +5,7 @@
 
 import { createHash } from 'crypto';
 import { Application, HookContext, HooksObject } from '@feathersjs/feathers';
+import { BadRequest } from '@feathersjs/errors';
 import service from 'feathers-sequelize';
 
 import allowExternal from '../hooks/allow-external';
@@ -58,8 +59,13 @@ export class EventsHooks {
    * @return {Promise | HookContext}
    */
   static transformCorrelator(context : HookContext) : Promise<void | HookContext<any>> {
-    if ((context.data.correlator) &&
-        (context.data.correlator.match(/(\w+)-(\w+)-(\w+)-(\w+)-(\w+)/))) {
+    if (!context.data.correlator) {
+      return Promise.resolve(context);
+    }
+    if (typeof context.data.correlator !== 'string') {
+      throw new BadRequest('correlator must be a string');
+    }
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(context.data.correlator)) {
       const hasher = createHash('SHA256');
       hasher.update(`${context.data.correlator}${context.data.type}`);
       context.data.correlator = hasher.digest('hex');

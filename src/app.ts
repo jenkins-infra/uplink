@@ -163,9 +163,9 @@ app.post('*', (req, res, next) => {
   next();
 });
 
-/*
- * Allow overriding the JWT secret in the environment, a la Kubernetes
- */
+if (!process.env.JWT_SECRET) {
+  logger.warn('JWT_SECRET is not set — tokens are signed with the insecure default from config/default.json. Set JWT_SECRET in the environment for any non-development deployment.');
+}
 app.get('authentication').secret = process.env.JWT_SECRET || app.get('authentication').secret;
 app.configure(authentication(app.get('authentication')));
 
@@ -200,6 +200,9 @@ app.service('authentication').hooks({
 const githubSettings = app.get('github');
 
 githubSettings.clientID = process.env.CLIENT_ID || githubSettings.clientID;
+if (!process.env.CLIENT_SECRET) {
+  logger.warn('CLIENT_SECRET is not set — using the GitHub OAuth client secret from config/default.json. Set CLIENT_SECRET in the environment for any non-development deployment.');
+}
 githubSettings.clientSecret = process.env.CLIENT_SECRET || githubSettings.clientSecret;
 
 app.configure(oauth2(Object.assign(githubSettings, {
