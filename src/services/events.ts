@@ -7,9 +7,9 @@ import { createHash } from 'crypto';
 import { Application, HookContext, HooksObject } from '@feathersjs/feathers';
 import service from 'feathers-sequelize';
 
+import allowExternal from '../hooks/allow-external';
 import authorize from '../hooks/authorize';
 import applyGrant from '../hooks/apply-grant';
-import disallowExternal from '../hooks/disallow-external';
 import sanitizeQuery from '../hooks/sanitize-query';
 import db from '../models';
 import Event from '../models/event';
@@ -98,7 +98,14 @@ export class EventsHooks {
   static getHooks() : HooksObject {
     return {
       before: {
+        /*
+         * Deny by default: only the methods listed here are reachable through
+         * REST. Events are append-only telemetry: nobody needs to modify or
+         * delete them through the API. `remove` is still used internally by
+         * tests.
+         */
         all: [
+          allowExternal(['find', 'get', 'create']),
         ],
         find: [
           authorize(),
@@ -130,19 +137,6 @@ export class EventsHooks {
           */
           this.filterFields,
           this.transformCorrelator,
-        ],
-        /*
-         * Events are append-only telemetry: nobody needs to modify or delete
-         * them through the API. `remove` is still used internally by tests.
-         */
-        update: [
-          disallowExternal(),
-        ],
-        patch: [
-          disallowExternal(),
-        ],
-        remove: [
-          disallowExternal(),
         ],
       },
       after: {

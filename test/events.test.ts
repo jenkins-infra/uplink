@@ -4,6 +4,13 @@ import { HooksObject, HookContext } from '@feathersjs/feathers';
 
 import app from '../src/app';
 import { EventsHooks } from '../src/services/events'
+import {
+  createTestUser,
+  mintToken,
+  createTestGrant,
+  cleanupTestUser,
+  cleanupTestGrant,
+} from './helpers/auth';
 
 // Offsetting a bit to ensure that we can watch and run at the same time
 const port = (app.get('port') || 3030) + 10;
@@ -214,5 +221,128 @@ describe('Events service tests', () => {
         return expect(EventsHooks.transformCorrelator(context)).resolves.toHaveProperty('data.correlator', correlator);
       });
     });
+  });
+});
+
+describe('Write methods on /events', () => {
+  const ADMIN_GITHUB_ID = 100301;
+  const ADMIN_USERNAME = 'events-admin';
+  const LIMITED_GITHUB_ID = 100302;
+  const LIMITED_USERNAME = 'events-limited';
+  const SENTINEL_TYPE = 'events-write-sentinel';
+  const SENTINEL_CORRELATOR = 'events-write-sentinel-correlator';
+  const SENTINEL_PAYLOAD = { original: true };
+
+  let server;
+  let sentinel;
+  let adminToken : string;
+  let limitedToken : string;
+
+  const expectStatus = async (promise, status : number) => {
+    try {
+      await promise;
+      fail(`Expected a ${status} response`);
+    } catch (err) {
+      expect(err.statusCode).toEqual(status);
+    }
+  };
+
+  // `find`/`get` on events require authorization even for internal calls
+  const testAccess = () => ({ query: { testing_access_token: true } });
+
+  const removeSentinel = async () => {
+    await app.service('events').remove(null, { query: { type: SENTINEL_TYPE } });
+    await app.service('types').remove(null, { query: { type: SENTINEL_TYPE } });
+  };
+
+  beforeAll(async () => {
+    const admin = await createTestUser(app, { githubId: ADMIN_GITHUB_ID, username: ADMIN_USERNAME });
+    await createTestGrant(app, ADMIN_USERNAME, '*');
+    adminToken = await mintToken(app, admin.id);
+
+    const limited = await createTestUser(app, { githubId: LIMITED_GITHUB_ID, username: LIMITED_USERNAME });
+    await createTestGrant(app, LIMITED_USERNAME, SENTINEL_TYPE);
+    limitedToken = await mintToken(app, limited.id);
+  });
+
+  afterAll(async () => {
+    await removeSentinel();
+    await cleanupTestGrant(app, ADMIN_USERNAME);
+    await cleanupTestGrant(app, LIMITED_USERNAME);
+    await cleanupTestUser(app, ADMIN_GITHUB_ID);
+    await cleanupTestUser(app, LIMITED_GITHUB_ID);
+  });
+
+  beforeEach(async () => {
+    await removeSentinel();
+    sentinel = await app.service('events').create({
+      type: SENTINEL_TYPE,
+      correlator: SENTINEL_CORRELATOR,
+      payload: SENTINEL_PAYLOAD,
+    });
+    server = app.listen(port);
+    await new Promise(resolve => server.once('listening', resolve));
+  });
+
+  afterEach(done => { server.close(done); });
+
+  const callers = [
+    { name: 'unauthenticated callers', headers: () => ({}) },
+    { name: 'users with a matching grant', headers: () => ({ Authorization: `Bearer ${limitedToken}` }) },
+    { name: 'admins', headers: () => ({ Authorization: `Bearer ${adminToken}` }) },
+  ];
+
+  const rewritten = { type: SENTINEL_TYPE, correlator: 'rewritten', payload: { rewritten: true } };
+  const writes = [
+    { name: 'PUT /events/:id', send: headers => request.put(getUrl(`/events/${sentinel.id}`), {
+      json: true, headers, body: rewritten,
+    }) },
+    { name: 'PATCH /events/:id', send: headers => request.patch(getUrl(`/events/${sentinel.id}`), {
+      json: true, headers, body: { payload: { rewritten: true } },
+    }) },
+    { name: 'PATCH /events', send: headers => request.patch(getUrl('/events'), {
+      json: true, headers, body: { payload: { rewritten: true } },
+    }) },
+    { name: 'DELETE /events/:id', send: headers => request.delete(getUrl(`/events/${sentinel.id}`), {
+      json: true, headers,
+    }) },
+    { name: 'DELETE /events', send: headers => request.delete(getUrl('/events'), {
+      json: true, headers,
+    }) },
+    { name: 'POST /events/:id with _method=DELETE', send: headers => request.post(getUrl(`/events/${sentinel.id}`), {
+      json: true, headers, body: { _method: 'DELETE' },
+    }) },
+  ];
+
+  for (const caller of callers) {
+    describe(`from ${caller.name}`, () => {
+      for (const write of writes) {
+        it(`rejects ${write.name} and leaves the event untouched`, async () => {
+          await expectStatus(write.send(caller.headers()), 405);
+
+          const stored = await app.service('events').get(sentinel.id, testAccess());
+          expect(stored.correlator).toEqual(SENTINEL_CORRELATOR);
+          expect(stored.payload).toEqual(SENTINEL_PAYLOAD);
+        });
+      }
+    });
+  }
+
+  it('still allows unauthenticated POST /events for ingestion', async () => {
+    const created = await request.post(getUrl('/events'), {
+      json: true,
+      body: { type: SENTINEL_TYPE, correlator: 'ingested', payload: { ok: true } },
+    });
+    expect(created.type).toEqual(SENTINEL_TYPE);
+  });
+
+  it('still allows internal update, patch and remove', async () => {
+    const events = app.service('events');
+    await events.update(sentinel.id, { ...rewritten });
+    await events.patch(sentinel.id, { payload: SENTINEL_PAYLOAD });
+    expect((await events.get(sentinel.id, testAccess())).correlator).toEqual('rewritten');
+
+    await events.remove(sentinel.id);
+    await expect(events.get(sentinel.id, testAccess())).rejects.toHaveProperty('code', 404);
   });
 });
