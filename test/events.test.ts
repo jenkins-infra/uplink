@@ -65,7 +65,7 @@ describe('Events service tests', () => {
             correlator: '0xdeadbeef',
           },
         }).then((response) => {
-          expect(response.statusCode).toEqual(201)
+          expect(response.statusCode).toEqual(204);
 
           // ensure that a type has been created in the types table
           request.get(getUrl('/types'), {
@@ -80,39 +80,37 @@ describe('Events service tests', () => {
         });
       });
 
-      it('should reject attempts to override protected fields', (done) => {
+      it('should reject attempts to override protected fields', async () => {
         const maliciousId = 999999;
         const maliciousDate = '2020-01-01T00:00:00.000Z';
 
-        request.post(getUrl('/events'), {
+        const response = await request.post(getUrl('/events'), {
           json: true,
           resolveWithFullResponse: true,
           body: {
             type: 'jest-malicious',
-            payload: {
-              test: 'data',
-            },
+            payload: { test: 'data' },
             correlator: '0xbadactor',
-            // Attacker trying to override protected fields
             id: maliciousId,
             createdAt: maliciousDate,
             updatedAt: maliciousDate,
           },
-        }).then((response) => {
-          expect(response.statusCode).toEqual(201);
-
-          // Verify the protected fields were NOT set to attacker's values
-          expect(response.body.id).not.toEqual(maliciousId);
-          expect(response.body.createdAt).not.toEqual(maliciousDate);
-          expect(response.body.updatedAt).not.toEqual(maliciousDate);
-
-          // Verify the allowed fields were set correctly
-          expect(response.body.type).toEqual('jest-malicious');
-          expect(response.body.correlator).toEqual('0xbadactor');
-          expect(response.body.payload).toEqual({ test: 'data' });
-
-          done();
         });
+        expect(response.statusCode).toEqual(204);
+
+        // Fetch the stored event to verify protected fields were not overridden
+        const events = await app.service('events').find({
+          query: { type: 'jest-malicious', testing_access_token: true },
+        });
+        expect(events.length).toEqual(1);
+        const stored = events[0];
+
+        expect(stored.id).not.toEqual(maliciousId);
+        expect(stored.createdAt.toISOString()).not.toEqual(maliciousDate);
+        expect(stored.updatedAt.toISOString()).not.toEqual(maliciousDate);
+        expect(stored.type).toEqual('jest-malicious');
+        expect(stored.correlator).toEqual('0xbadactor');
+        expect(stored.payload).toEqual({ test: 'data' });
       });
     });
   });
@@ -329,11 +327,12 @@ describe('Write methods on /events', () => {
   }
 
   it('still allows unauthenticated POST /events for ingestion', async () => {
-    const created = await request.post(getUrl('/events'), {
+    const response = await request.post(getUrl('/events'), {
       json: true,
+      resolveWithFullResponse: true,
       body: { type: SENTINEL_TYPE, correlator: 'ingested', payload: { ok: true } },
     });
-    expect(created.type).toEqual(SENTINEL_TYPE);
+    expect(response.statusCode).toEqual(204);
   });
 
   it('still allows internal update, patch and remove', async () => {

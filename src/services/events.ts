@@ -148,6 +148,7 @@ export class EventsHooks {
       after: {
         create: [
           this.denormalizeType,
+          (context) => { context.result = null; },
         ],
       },
       error: {},
