@@ -4,6 +4,7 @@
  */
 
 import authentication from '@feathersjs/authentication';
+import { Forbidden } from '@feathersjs/errors';
 import cookieParser from 'cookie-parser';
 
 export default (app) => {
@@ -17,10 +18,13 @@ export default (app) => {
         }
       }, req.query);
       const user = (req as any).user;
-      const name : string = user.github.profile.username;
-      const grants : Array<string> = await app.service('grants').find({ query: { name: name }});
+      const name : string = user?.github?.profile?.username;
+      if (!name) {
+        return next(new Forbidden('No GitHub information, sorry'));
+      }
+      const grants : Array<any> = await app.service('grants').find({ query: { name: name }});
       const types : Array<Object> = await app.service('types').find();
-      const isAdmin : boolean = (grants.filter(g => g != '*').length > 0);
+      const isAdmin : boolean = grants.some(g => g.type === '*');
 
       app.service('events')
         .find({

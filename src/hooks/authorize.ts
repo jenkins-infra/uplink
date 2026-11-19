@@ -32,11 +32,17 @@ export default (options : AuthorizeOptions = {}) => {
       return SKIP;
     }
 
-    if (!context.params.user) {
+    /*
+     * A valid-but-anonymous JWT (no userId) authenticates successfully but
+     * resolves to an empty user object, so a bare `!context.params.user` check
+     * passes and then crashes with a 500 on the property access below. Require
+     * a real GitHub identity and fail closed with a 403 instead.
+     */
+    const name : string = context.params.user?.github?.profile?.username;
+    if (!name) {
       throw new Forbidden('No GitHub information, sorry');
     }
 
-    const name : string = context.params.user.github.profile.username;
     const type : string = context.params.query.type;
 
     return context.app.service('grants').find({
