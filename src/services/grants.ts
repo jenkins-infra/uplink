@@ -5,6 +5,7 @@ import service from 'feathers-sequelize';
 import { DataTypes } from 'sequelize';
 
 import logger from '../logger';
+import sanitizeQuery from '../hooks/sanitize-query';
 import db from '../models';
 import Grant from '../models/grant';
 
@@ -34,6 +35,12 @@ export const grantHooks : HooksObject = {
     all: [
       authentication.hooks.authenticate(['jwt']),
       requireMaintainer,
+    ],
+    find: [
+      sanitizeQuery(['id', 'name', 'type', 'createdAt', 'updatedAt']),
+    ],
+    get: [
+      sanitizeQuery(['id', 'name', 'type', 'createdAt', 'updatedAt']),
     ],
   },
   after: {
