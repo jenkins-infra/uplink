@@ -1,8 +1,7 @@
-import authentication from '@feathersjs/authentication';
+import { authenticate } from '@feathersjs/authentication';
 import { Forbidden } from '@feathersjs/errors';
-import { HooksObject } from '@feathersjs/feathers';
-import service from 'feathers-sequelize';
-import { DataTypes } from 'sequelize';
+import { HookOptions } from '@feathersjs/feathers';
+import { SequelizeService } from 'feathers-sequelize';
 
 import logger from '../logger';
 import sanitizeQuery from '../hooks/sanitize-query';
@@ -30,10 +29,10 @@ export const requireMaintainer = async (context) => {
   return context;
 };
 
-export const grantHooks : HooksObject = {
+export const grantHooks : HookOptions<any, any> = {
   before: {
     all: [
-      authentication.hooks.authenticate(['jwt']),
+      authenticate('jwt'),
       requireMaintainer,
     ],
     find: [
@@ -51,6 +50,6 @@ export const grantHooks : HooksObject = {
 
 export default (app) => {
   const Model : any = Grant(db.sequelize, db.sequelize.Sequelize);
-  app.use('/grants', service({ Model }));
+  app.use('/grants', new SequelizeService({ Model, multi: true }) as any);
   app.service('grants').hooks(grantHooks);
 }

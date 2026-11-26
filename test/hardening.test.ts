@@ -10,6 +10,7 @@ import app from '../src/app';
 import {
   createTestUser,
   mintToken,
+  mintAnonymousToken,
   createTestGrant,
   cleanupTestUser,
   cleanupTestGrant,
@@ -52,7 +53,7 @@ describe('Access control hardening', () => {
     await createTestGrant(app, LIMITED_USERNAME, 'jest-example');
     limitedToken = await mintToken(app, limited.id);
 
-    anonymousToken = await (app as any).passport.createJWT({}, app.get('authentication'));
+    anonymousToken = await mintAnonymousToken(app);
   });
 
   afterAll(async () => {
@@ -62,9 +63,8 @@ describe('Access control hardening', () => {
     await cleanupTestUser(app, LIMITED_GITHUB_ID);
   });
 
-  beforeEach(done => {
-    server = app.listen(port);
-    server.once('listening', () => done());
+  beforeEach(async () => {
+    server = await app.listen(port);
   });
 
   afterEach(done => { server.close(done); });

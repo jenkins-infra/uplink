@@ -3,21 +3,21 @@
  * together
  */
 
-import authentication from '@feathersjs/authentication';
+import { authenticate } from '@feathersjs/express';
 import { Forbidden } from '@feathersjs/errors';
 import cookieParser from 'cookie-parser';
 
 export default (app) => {
   app.get('/dashboard',
     cookieParser(),
-    authentication.express.authenticate('jwt'),
+    authenticate('jwt'),
     async (req, res, next) => {
       const query = Object.assign({
         $sort: {
           id: -1,
         }
       }, req.query);
-      const user = (req as any).user;
+      const user = (req as any).feathers.user;
       const name : string = user?.github?.profile?.username;
       if (!name) {
         return next(new Forbidden('No GitHub information, sorry'));

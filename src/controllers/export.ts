@@ -3,7 +3,7 @@
  * containing entries matching a specific type
  */
 
-import authentication from '@feathersjs/authentication';
+import { authenticate } from '@feathersjs/express';
 import { Forbidden } from '@feathersjs/errors';
 import cookieParser from 'cookie-parser';
 import db from '../models';
@@ -14,9 +14,9 @@ import JSONStream from 'jsonstream'
 export default (app) => {
   app.post('/export',
     cookieParser(),
-    authentication.express.authenticate('jwt'),
+    authenticate('jwt'),
     async (req, res, next) => {
-      const user = (req as any).user;
+      const user = (req as any).feathers.user;
 
       if (!user?.github?.profile?.username) {
         return next(new Forbidden('Authentication required'));

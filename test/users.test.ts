@@ -14,9 +14,8 @@ const getUrl = pathname => url.format({
 describe('Users service: external access blocked', () => {
   let server;
 
-  beforeEach(done => {
-    server = app.listen(port);
-    server.once('listening', () => done());
+  beforeEach(async () => {
+    server = await app.listen(port);
   });
 
   afterEach(done => { server.close(done); });
