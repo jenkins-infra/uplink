@@ -1,7 +1,7 @@
 /**
  * Helpers for creating test users and signing JWTs in acceptance tests.
  *
- * Uses app.passport.createJWT so tokens are signed with the same secret and
+ * Uses the authentication service's createAccessToken so tokens are signed with the same secret and
  * options the application uses, without coupling tests to the JWT structure.
  */
 
@@ -16,7 +16,12 @@ export async function createTestUser(app, { githubId, username }: { githubId: nu
 }
 
 export async function mintToken(app, userId: number): Promise<string> {
-  return (app as any).passport.createJWT({ userId }, app.get('authentication'));
+  return (app.service('authentication') as any).createAccessToken({}, { subject: String(userId) });
+}
+
+/** A validly signed token which does not belong to any user (no `sub`) */
+export async function mintAnonymousToken(app): Promise<string> {
+  return (app.service('authentication') as any).createAccessToken({});
 }
 
 export async function createTestGrant(app, name: string, type: string) {

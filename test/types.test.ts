@@ -21,9 +21,8 @@ const getUrl = pathname => url.format({
 
 describe('Acceptance tests for /types', () => {
   let server
-  beforeEach((done) => {
-    server = app.listen(port);
-    server.once('listening', () => done());
+  beforeEach(async () => {
+    server = await app.listen(port);
   });
   afterEach(done => {
     server.close(done)
@@ -102,8 +101,7 @@ describe('Write methods on /types', () => {
   beforeEach(async () => {
     await removeSentinel();
     sentinel = await app.service('types').create({ type: SENTINEL_TYPE });
-    server = app.listen(port);
-    await new Promise(resolve => server.once('listening', resolve));
+    server = await app.listen(port);
   });
 
   afterEach(done => { server.close(done); });

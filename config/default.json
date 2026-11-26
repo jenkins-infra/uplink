@@ -1,22 +1,42 @@
 {
   "host": "localhost",
   "port": 3030,
-  "public": "../public/",
+  "public": "./public/",
   "postgres": "postgres://postgres:jenkinsuplink@db:5432/uplink_development",
   "authentication": {
     "secret": "a poorly formed development secret",
-    "session": true,
     "cookie": {
       "secure": false,
       "httpOnly": true,
       "sameSite": "lax",
       "enabled": true,
       "name": "uplink-jwt"
+    },
+    "entity": "user",
+    "service": "users",
+    "entityId": "id",
+    "authStrategies": [
+      "jwt"
+    ],
+    "jwtOptions": {
+      "header": {
+        "typ": "access"
+      },
+      "audience": "https://uplink.jenkins.io",
+      "algorithm": "HS256",
+      "expiresIn": "1d"
+    },
+    "oauth": {
+      "redirect": "/dashboard",
+      "defaults": {
+        "prefix": "/auth"
+      },
+      "github": {
+        "key": "72bd7848c64951dded52",
+        "secret": "60a8dc07b6391bff756d4eab3b84a520ee87becc",
+        "scope": []
+      }
     }
-  },
-  "github": {
-    "clientID": "72bd7848c64951dded52",
-    "clientSecret": "60a8dc07b6391bff756d4eab3b84a520ee87becc"
   },
   "paginate": {
     "default": 10,

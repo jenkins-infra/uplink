@@ -4,14 +4,15 @@
  */
 
 import { createHash } from 'crypto';
-import { Application, HookContext, HooksObject } from '@feathersjs/feathers';
+import { Application, HookContext, HookOptions } from '@feathersjs/feathers';
 import { BadRequest } from '@feathersjs/errors';
-import service from 'feathers-sequelize';
+import { SequelizeService } from 'feathers-sequelize';
 
 import allowExternal from '../hooks/allow-external';
 import authorize from '../hooks/authorize';
 import applyGrant from '../hooks/apply-grant';
 import sanitizeQuery from '../hooks/sanitize-query';
+import { skippable } from '../hooks/authorize';
 import db from '../models';
 import Event from '../models/event';
 
@@ -95,13 +96,13 @@ export class EventsHooks {
   }
 
   /**
-   * getHooks() simply returns a HooksObject for passing into Feathers
+   * getHooks() simply returns a HookOptions object for passing into Feathers
    *
    * It exists to make this all a bit more simple to test, nothing more
    *
-   * @return {HooksObject}
+   * @return {HookOptions}
    */
-  static getHooks() : HooksObject {
+  static getHooks() : HookOptions<any, any> {
     return {
       before: {
         /*
@@ -115,6 +116,7 @@ export class EventsHooks {
         ],
         find: [
           authorize(),
+          ...skippable([
           sanitizeQuery(QUERYABLE_COLUMNS),
           applyGrant(),
           /*
@@ -131,11 +133,14 @@ export class EventsHooks {
               $limit: 25,
             });
           },
+          ]),
         ],
         get: [
           authorize(),
-          sanitizeQuery(QUERYABLE_COLUMNS),
-          applyGrant(),
+          ...skippable([
+            sanitizeQuery(QUERYABLE_COLUMNS),
+            applyGrant(),
+          ]),
         ],
         create: [
           /*
@@ -158,8 +163,9 @@ export class EventsHooks {
 
 export default (app : Application) => {
   const Model : any = Event(db.sequelize, db.sequelize.Sequelize);
-  app.use('/events', service({
+  app.use('/events', new SequelizeService({
     Model: Model,
-  }));
+    multi: true,
+  }) as any);
   app.service('events').hooks(EventsHooks.getHooks());
 };

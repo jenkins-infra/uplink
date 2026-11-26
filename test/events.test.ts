@@ -1,6 +1,7 @@
 import url from 'url';
 import request from 'request-promise';
-import { HooksObject, HookContext } from '@feathersjs/feathers';
+import { HookContext } from '@feathersjs/feathers';
+
 
 import app from '../src/app';
 import { EventsHooks } from '../src/services/events'
@@ -24,9 +25,8 @@ const getUrl = pathname => url.format({
 describe('Events service tests', () => {
   describe('Acceptance tests for /events', () => {
     let server
-    beforeEach((done) => {
-      server = app.listen(port);
-      server.once('listening', () => done());
+    beforeEach(async () => {
+      server = await app.listen(port);
     });
     afterEach(done => {
       server.close(done)
@@ -127,7 +127,7 @@ describe('Events service tests', () => {
 
     describe('filterFields', () => {
       it('should only allow whitelisted fields', () => {
-        const context: HookContext<any> = {
+        const context: any = {
           data: {
             type: 'jest-test',
             correlator: 'test-correlator',
@@ -157,7 +157,7 @@ describe('Events service tests', () => {
       });
 
       it('should handle missing optional fields', () => {
-        const context: HookContext<any> = {
+        const context: any = {
           data: {
             type: 'jest-test',
             payload: { foo: 'bar' },
@@ -180,7 +180,7 @@ describe('Events service tests', () => {
     });
 
     describe('transformCorrelator', () => {
-      const context: HookContext<any> = {
+      const context: any = {
         data: {
           correlator: null,
           type: 'jest',
@@ -278,8 +278,7 @@ describe('Write methods on /events', () => {
       correlator: SENTINEL_CORRELATOR,
       payload: SENTINEL_PAYLOAD,
     });
-    server = app.listen(port);
-    await new Promise(resolve => server.once('listening', resolve));
+    server = await app.listen(port);
   });
 
   afterEach(done => { server.close(done); });

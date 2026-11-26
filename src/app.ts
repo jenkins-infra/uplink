@@ -19,20 +19,26 @@ import * as Sentry from '@sentry/node';
 /*
  * Feathers specific imports for setting up the application
  */
-import feathers from '@feathersjs/feathers';
+import { feathers } from '@feathersjs/feathers';
 import configuration from '@feathersjs/configuration';
-import authentication from '@feathersjs/authentication';
+import { AuthenticationService } from '@feathersjs/authentication';
+import { oauth } from '@feathersjs/authentication-oauth';
 import { Forbidden, NotAuthenticated } from '@feathersjs/errors';
-import jwt from '@feathersjs/authentication-jwt';
-import oauth2 from '@feathersjs/authentication-oauth2';
-import { Strategy } from 'passport-github';
-import express from '@feathersjs/express';
+import express, {
+  rest,
+  json,
+  urlencoded,
+  serveStatic,
+  notFound,
+  errorHandler,
+} from '@feathersjs/express';
 /**/
 
 
 import middleware from './middleware';
 import services from './services';
 import { appHooks } from './app.hooks';
+import { CookieJWTStrategy, GitHubStrategy } from './authentication';
 
 import Admin from './controllers/admin';
 import Dashboard from './controllers/dashboard';
@@ -136,60 +142,88 @@ app.use((req, res, next) => {
   return next();
 });
 app.use(compress());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(json());
+app.use(urlencoded({ extended: true }));
 app.use(favicon(path.join(app.get('public'), 'favicon.ico')));
 // Host the public folder
-app.use('/', express.static(app.get('public')));
-
-// Set up Plugins and providers
-app.configure(express.rest());
+app.use('/', serveStatic(app.get('public')));
 
 /*
  * Enabling the cookie parser on all requests to make sure we can use the JWT
  * authentication wherever we damn well please
  */
-app.get('*', cookieParser());
-app.post('*', cookieParser());
+app.use(cookieParser());
 
 /*
  * Ensure that POST calls which have _method set to DELETE get passed through
  * properly
  */
 app.post('*', (req, res, next) => {
-  if (req.body._method == 'DELETE') {
+  if (req.body?._method == 'DELETE') {
     req.method = req.body._method;
   }
   next();
 });
 
+// Set up Plugins and providers (this also parses the Authorization header)
+app.configure(rest());
+
 if (!process.env.JWT_SECRET) {
   logger.warn('JWT_SECRET is not set — tokens are signed with the insecure default from config/default.json. Set JWT_SECRET in the environment for any non-development deployment.');
 }
-app.get('authentication').secret = process.env.JWT_SECRET || app.get('authentication').secret;
-app.configure(authentication(app.get('authentication')));
+if (!process.env.CLIENT_SECRET) {
+  logger.warn('CLIENT_SECRET is not set — using the GitHub OAuth client secret from config/default.json. Set CLIENT_SECRET in the environment for any non-development deployment.');
+}
+/*
+ * The configuration object is shared with node-config: copy the sections we
+ * override from the environment instead of mutating them in place.
+ */
+const authSettings = app.get('authentication');
+const githubSettings = authSettings.oauth.github;
+app.set('authentication', {
+  ...authSettings,
+  secret: process.env.JWT_SECRET || authSettings.secret,
+  oauth: {
+    ...authSettings.oauth,
+    defaults: {
+      ...authSettings.oauth.defaults,
+      // The public origin used to build the GitHub OAuth callback URL
+      ...(process.env.OAUTH_ORIGIN ? { origin: process.env.OAUTH_ORIGIN } : {}),
+    },
+    github: {
+      ...githubSettings,
+      key: process.env.CLIENT_ID || githubSettings.key,
+      secret: process.env.CLIENT_SECRET || githubSettings.secret,
+    },
+  },
+});
 
-app.configure(jwt());
+const authService = new AuthenticationService(app);
+authService.register('jwt', new CookieJWTStrategy());
+authService.register('github', new GitHubStrategy());
+app.use('authentication', authService);
+
+app.configure(oauth());
 
 /*
- * POST /authentication with no credentials issues a JWT with sub:"anonymous".
- * No legitimate caller in this application uses anonymous tokens — telemetry
- * submissions go directly to /events (unauthenticated), and dashboard/admin
- * sessions are established via the GitHub OAuth flow. Reject credential-free
- * authentication requests at the source.
+ * POST /authentication with no credentials (or any other external call) must
+ * not issue a JWT. No legitimate caller in this application uses the
+ * authentication service through REST: telemetry submissions go directly to
+ * /events (unauthenticated), and dashboard/admin sessions are established via
+ * the GitHub OAuth flow.
  */
 app.service('authentication').hooks({
   before: {
     create: [
       (context) => {
         /*
-         * Tokens are only ever issued by the GitHub OAuth2 callback, whose
-         * Express handler calls authentication.create() internally (no
-         * transport provider) with the authenticated user already resolved
-         * server-side. Nothing calls this through REST: the service would sign
-         * whatever payload it's given without verifying any credential.
+         * Tokens are only ever issued by the GitHub OAuth callback, which
+         * calls authentication.create() with the profile that GitHub returned
+         * to the server (see the `viaOAuthCallback` marker below). Anything
+         * else arriving through REST would make the service sign whatever
+         * payload it's given.
          */
-        if (context.params.provider) {
+        if (context.params.provider && !(context.params as any).viaOAuthCallback) {
           throw new NotAuthenticated('Authentication credentials are required');
         }
       },
@@ -197,20 +231,45 @@ app.service('authentication').hooks({
   },
 });
 
-const githubSettings = app.get('github');
-
-githubSettings.clientID = process.env.CLIENT_ID || githubSettings.clientID;
-if (!process.env.CLIENT_SECRET) {
-  logger.warn('CLIENT_SECRET is not set — using the GitHub OAuth client secret from config/default.json. Set CLIENT_SECRET in the environment for any non-development deployment.');
-}
-githubSettings.clientSecret = process.env.CLIENT_SECRET || githubSettings.clientSecret;
-
-app.configure(oauth2(Object.assign(githubSettings, {
-  name: 'github',
-  Strategy: Strategy,
-  successRedirect: '/dashboard',
-  scope: [],
-})));
+/*
+ * Mark calls reaching the OAuth callback (server-side, not settable by
+ * clients) and turn the access token it issues into the JWT cookie used by
+ * the browser UI, then redirect to the dashboard.
+ */
+app.service('auth/:provider/callback').hooks({
+  around: {
+    all: [
+      async (context, next) => {
+        (context.params as any).viaOAuthCallback = true;
+        await next();
+        const accessToken = context.result?.accessToken;
+        if (!accessToken) {
+          return;
+        }
+        const cookieSettings = app.get('authentication').cookie;
+        const attributes = [
+          `${cookieSettings.name}=${accessToken}`,
+          'Path=/',
+          'Max-Age=86400',
+          `SameSite=${cookieSettings.sameSite || 'lax'}`,
+        ];
+        if (cookieSettings.httpOnly) {
+          attributes.push('HttpOnly');
+        }
+        if (cookieSettings.secure) {
+          attributes.push('Secure');
+        }
+        context.http = {
+          ...context.http,
+          headers: {
+            ...context.http?.headers,
+            'Set-Cookie': attributes.join('; '),
+          },
+        };
+      },
+    ],
+  },
+});
 
 app.set('view engine', 'pug');
 
@@ -218,7 +277,7 @@ Dashboard(app);
 Export(app);
 Admin(app);
 
-app.get('/logout',
+(app as any).get('/logout',
   cookieParser(),
   (req, res, next) => {
     res.clearCookie(app.get('authentication').cookie.name);
@@ -234,8 +293,8 @@ app.configure(services);
 // The error handler must be before any other error middleware
 app.use(Sentry.Handlers.errorHandler() as any);
 // Configure a middleware for 404s and the error handler
-app.use(express.notFound());
-app.use(express.errorHandler({ logger }));
+app.use(notFound());
+app.use(errorHandler({ logger }));
 
 app.hooks(appHooks);
 

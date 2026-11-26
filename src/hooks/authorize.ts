@@ -1,8 +1,23 @@
-import authentication from '@feathersjs/authentication';
+import { authenticate } from '@feathersjs/authentication';
 import { Forbidden } from '@feathersjs/errors';
-import { SKIP } from '@feathersjs/feathers';
 
 import logger from '../logger';
+
+/*
+ * Feathers 5 no longer has `SKIP` to bypass the remaining hooks. The authorize
+ * hook flags the call instead, and the hooks that must be bypassed for such
+ * calls are wrapped with `skippable()`.
+ */
+export const SKIP_KEY = 'skipRemainingHooks';
+
+export const skippable = (hooks : Array<(context : any) => any>) => {
+  return hooks.map(hook => async (context) => {
+    if (context.params[SKIP_KEY]) {
+      return context;
+    }
+    return hook(context);
+  });
+};
 
 export interface AuthorizeOptions {
   allowInternal?: boolean,
@@ -16,21 +31,19 @@ export default (options : AuthorizeOptions = {}) => {
      */
     if ((options.allowInternal) &&
         (!context.params.provider)) {
-      return SKIP;
+      context.params[SKIP_KEY] = true;
+      return context;
     }
 
     if ((process.env.NODE_ENV == 'test') &&
         (context.params.query.testing_access_token)) {
       // Remove the property to make sure it's not used in the DB query
       delete context.params.query.testing_access_token;
-      return SKIP;
+      context.params[SKIP_KEY] = true;
+      return context;
     }
 
-    context = await authentication.hooks.authenticate(['jwt'])(context);
-
-    if (context == SKIP) {
-      return SKIP;
-    }
+    context = await authenticate('jwt')(context);
 
     /*
      * A valid-but-anonymous JWT (no userId) authenticates successfully but
