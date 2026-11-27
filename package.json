@@ -46,7 +46,7 @@
     "@feathersjs/errors": "^5.0.44",
     "@feathersjs/express": "^1.2.5",
     "@feathersjs/feathers": "^3.2.1",
-    "@sentry/node": "^4.0.3",
+    "@sentry/node": "^11.17.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.3",
     "event-stream": "^3.3.4",
